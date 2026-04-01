@@ -1,0 +1,16 @@
+[
+  {
+    "id": 1,
+    "title": "JavaScript для новичков 2",
+    "teacher": "Иван Иванов",
+    "duration": "20 часов",
+    "tags": ["JavaScript", "Frontend"]
+  },
+  {
+    "id": 2,
+    "title": "React с нуля 2",
+    "teacher": "Петр Петров",
+    "duration": "30 часов",
+    "tags": ["React", "Frontend"]
+  }
+]
