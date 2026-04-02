@@ -1,7 +1,7 @@
-import { useEffect, useState } from 'react';
-import { Activity, BookOpen, User, Layers } from 'lucide-react';
-import { Card } from '../components/ui/Card';
-import styles from './AdminDashboard.module.css';
+import { useEffect, useState } from "react";
+import { Activity, BookOpen, User, Layers } from "lucide-react";
+import { Card } from "../components/ui/Card";
+import styles from "./AdminDashboard.module.css";
 
 interface SystemStats {
   userCount: number;
@@ -29,12 +29,12 @@ export const AdminDashboard = () => {
       try {
         setLoading(true);
         const [systemRes, recentRes] = await Promise.all([
-          fetch('/api/stats/system'),
-          fetch('/api/stats/recent'),
+          fetch("/api/stats/system"),
+          fetch("/api/stats/recent"),
         ]);
 
         if (!systemRes.ok || !recentRes.ok) {
-          throw new Error('Failed to fetch analytics data');
+          throw new Error("Failed to fetch analytics data");
         }
 
         const systemData = await systemRes.json();
@@ -43,8 +43,8 @@ export const AdminDashboard = () => {
         setSystem(systemData);
         setRecent(recentData);
       } catch (err) {
-        console.error('Analytics fetch error', err);
-        setError('Could not load analytics. Please try again later.');
+        console.error("Analytics fetch error", err);
+        setError("Could not load analytics. Please try again later.");
       } finally {
         setLoading(false);
       }
@@ -72,7 +72,9 @@ export const AdminDashboard = () => {
             <h2>Users</h2>
           </div>
           <p className={styles.statValue}>{system?.userCount || 0}</p>
-          <small className="text-secondary">New in 7d: {recent?.last7days?.users || 0}</small>
+          <small className={`text-secondary ${styles.recentText}`}>
+            New in 7d: {recent?.last7days?.users || 0}
+          </small>
         </Card>
 
         <Card>
@@ -81,7 +83,9 @@ export const AdminDashboard = () => {
             <h2>Courses</h2>
           </div>
           <p className={styles.statValue}>{system?.courseCount || 0}</p>
-          <small className="text-secondary">New in 7d: {recent?.last7days?.courses || 0}</small>
+          <small className={`text-secondary ${styles.recentText}`}>
+            New in 7d: {recent?.last7days?.courses || 0}
+          </small>
         </Card>
 
         <Card>
@@ -98,13 +102,17 @@ export const AdminDashboard = () => {
             <h2>Enrollments</h2>
           </div>
           <p className={styles.statValue}>{system?.enrollmentCount || 0}</p>
-          <small className="text-secondary">New in 7d: {recent?.last7days?.enrollments || 0}</small>
+          <small className={`text-secondary ${styles.recentText}`}>
+            New in 7d: {recent?.last7days?.enrollments || 0}
+          </small>
         </Card>
       </div>
 
       <div className={styles.section}>
         <h2 className={styles.sectionTitle}>System status</h2>
-        <p>Core services: <strong>Online</strong></p>
+        <p>
+          Core services: <strong>Online</strong>
+        </p>
       </div>
     </div>
   );

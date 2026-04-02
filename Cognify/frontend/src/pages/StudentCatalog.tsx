@@ -69,11 +69,14 @@ export const StudentCatalog = () => {
         }
       })
       .catch((err) => {
-        if (err.name !== 'AbortError') console.error("Error fetching courses:", err);
+        if (err.name !== "AbortError")
+          console.error("Error fetching courses:", err);
       })
       .finally(() => setIsLoading(false));
 
-    authFetch(`/api/student/courses/${parsedUser.id}`, { signal: controller.signal })
+    authFetch(`/api/student/courses/${parsedUser.id}`, {
+      signal: controller.signal,
+    })
       .then((res) => res.json())
       .then((data) => {
         if (data.courses) {
@@ -85,7 +88,7 @@ export const StudentCatalog = () => {
         }
       })
       .catch((err) => {
-        if (err.name !== 'AbortError') console.error(err);
+        if (err.name !== "AbortError") console.error(err);
       });
 
     return () => controller.abort();
@@ -96,10 +99,13 @@ export const StudentCatalog = () => {
     setEnrollingMap((prev) => ({ ...prev, [courseId]: true }));
 
     try {
-      const token = localStorage.getItem('token');
+      const token = localStorage.getItem("token");
       const res = await fetch("/api/enroll", {
         method: "POST",
-        headers: { "Content-Type": "application/json", "Authorization": `Bearer ${token}` },
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
         body: JSON.stringify({ course_id: courseId }),
       });
 
@@ -115,11 +121,12 @@ export const StudentCatalog = () => {
 
   if (!user) return null;
 
-  const filteredCourses = courses.filter((course) => 
-    course.title.toLowerCase().includes(searchQuery.toLowerCase()) || 
-    (course.description?.toLowerCase().includes(searchQuery.toLowerCase())) ||
-    (course.teacher?.name?.toLowerCase().includes(searchQuery.toLowerCase())) ||
-    (course.teacher_name?.toLowerCase().includes(searchQuery.toLowerCase()))
+  const filteredCourses = courses.filter(
+    (course) =>
+      course.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      course.description?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      course.teacher?.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      course.teacher_name?.toLowerCase().includes(searchQuery.toLowerCase()),
   );
 
   return (
@@ -150,7 +157,13 @@ export const StudentCatalog = () => {
       <div className={styles.trendingSection}>
         <h3 className={styles.sectionLabel}>Trending Topics</h3>
         <div className={styles.trendingList}>
-          {['Quantum Computing', 'Digital Art', 'Business AI', 'Psychology', 'Web3'].map((topic, i) => (
+          {[
+            "Quantum Computing",
+            "Digital Art",
+            "Business AI",
+            "Psychology",
+            "Web3",
+          ].map((topic, i) => (
             <div key={i} className={styles.trendingChip}>
               <Sparkles size={14} className={styles.chipIcon} />
               {topic}
@@ -169,36 +182,58 @@ export const StudentCatalog = () => {
             <Card key={course.id} interactive className={styles.courseCard}>
               <CardBody>
                 <div className={styles.cardHeader}>
-                  <div className={styles.badge}>{course.aiGenerated ? 'AI Path' : 'Classic Path'}</div>
+                  <div className={styles.badge}>
+                    {course.aiGenerated ? "AI Path" : "Classic Path"}
+                  </div>
                   <h3 className={styles.courseTitle}>{course.title}</h3>
                 </div>
                 <p className={styles.courseDesc}>
-                  {course.description || 'Dive into this curated curriculum and master new horizons with Cognify AI.'}
+                  {course.description ||
+                    "Dive into this curated curriculum and master new horizons with Cognify AI."}
                 </p>
-                
+
                 {enrolledMap[course.id] && (
                   <div className={styles.progressArea}>
                     <div className={styles.progressInfo}>
-                      <span>{course.progress === 100 ? "Completed" : "Progress"}</span>
+                      <span>
+                        {course.progress === 100 ? "Completed" : "Progress"}
+                      </span>
                       <span>{course.progress || 0}%</span>
                     </div>
                     <div className={styles.progressBar}>
-                      <div className={styles.progressFill} style={{ width: `${course.progress || 0}%` }}></div>
+                      <div
+                        className={styles.progressFill}
+                        style={{ width: `${course.progress || 0}%` }}
+                      ></div>
                     </div>
                   </div>
                 )}
               </CardBody>
               <CardFooter className={styles.cardFooter}>
                 <div className={styles.teacherInfo}>
-                  <div className={styles.avatarMini}>{course.teacher?.name?.[0] || course.teacher_name?.[0] || 'T'}</div>
-                  <span>{course.teacher?.name || course.teacher_name || 'Teacher'}</span>
+                  <div className={styles.avatarMini}>
+                    {course.teacher?.name?.[0] ||
+                      course.teacher_name?.[0] ||
+                      "T"}
+                  </div>
+                  <span>
+                    {course.teacher?.name || course.teacher_name || "Teacher"}
+                  </span>
                 </div>
                 {enrolledMap[course.id] ? (
-                  <Button size="sm" variant="secondary" onClick={() => navigate(`/course/${course.id}`)}>
+                  <Button
+                    size="sm"
+                    variant="secondary"
+                    onClick={() => navigate(`/course/${course.id}`)}
+                  >
                     Continue
                   </Button>
                 ) : (
-                  <Button size="sm" onClick={() => handleEnroll(course.id)} disabled={enrollingMap[course.id]}>
+                  <Button
+                    size="sm"
+                    onClick={() => handleEnroll(course.id)}
+                    disabled={enrollingMap[course.id]}
+                  >
                     {enrollingMap[course.id] ? "Enrolling..." : "Enroll"}
                   </Button>
                 )}
@@ -210,11 +245,21 @@ export const StudentCatalog = () => {
 
       {!isLoading && courses.length > 0 && (
         <div className={styles.paginationWrap}>
-          <Button onClick={() => setPage((prev) => Math.max(prev - 1, 1))} disabled={page <= 1} size="sm">
+          <Button
+            onClick={() => setPage((prev) => Math.max(prev - 1, 1))}
+            disabled={page <= 1}
+            size="sm"
+          >
             Previous
           </Button>
-          <span className={styles.paginationInfo}>Page {page} of {totalPages}</span>
-          <Button onClick={() => setPage((prev) => Math.min(prev + 1, totalPages))} disabled={page >= totalPages} size="sm">
+          <span className={styles.paginationInfo}>
+            Page {page} of {totalPages}
+          </span>
+          <Button
+            onClick={() => setPage((prev) => Math.min(prev + 1, totalPages))}
+            disabled={page >= totalPages}
+            size="sm"
+          >
             Next
           </Button>
         </div>

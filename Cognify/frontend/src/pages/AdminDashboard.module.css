@@ -1,17 +1,50 @@
-.container { padding: 1rem; }
+.container {
+  padding: 1rem;
+}
 
-.title { font-size: 2.2rem; margin-bottom: 1rem; }
+.title {
+  font-size: 2.2rem;
+  margin-bottom: 1rem;
+}
 
-.grid { display: grid; gap: 1rem; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); }
+.grid {
+  display: grid;
+  gap: 1rem;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+}
 
-.cardHeader { display: flex; align-items: center; gap: 0.75rem; }
+.cardHeader {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.75rem;
+}
 
-.statValue { font-size: 2rem; font-weight: 700; }
+.statValue {
+  font-size: 2rem;
+  font-weight: 700;
+  text-align: center;
+}
 
-.section { margin-top: 2rem; }
+.section {
+  margin-top: 2rem;
+}
 
-.sectionTitle { margin-bottom: 0.75rem; }
+.sectionTitle {
+  margin-bottom: 0.75rem;
+}
 
-.statusText { margin: 2rem; font-size: 1.1rem; }
+.statusText {
+  margin: 2rem;
+  font-size: 1.1rem;
+}
 
-.errorText { margin: 2rem; color: var(--danger); }
+.recentText {
+  display: flex;
+  justify-content: center;
+}
+
+.errorText {
+  margin: 2rem;
+  color: var(--danger);
+}
