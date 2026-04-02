@@ -1,0 +1,177 @@
+.container {
+  display: flex;
+  height: calc(100vh - var(--nav-height) - 4rem);
+  gap: 2rem;
+  margin-top: 2rem;
+}
+
+.sidebar {
+  width: 300px;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  overflow-y: auto;
+  padding-right: 0.5rem;
+}
+
+.mainContent {
+  flex: 1;
+  overflow-y: auto;
+  padding-right: 1rem;
+}
+
+.lessonBtn {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  padding: 1rem;
+  border-radius: 12px;
+  background: var(--bg-card);
+  border: 1px solid var(--border-glass);
+  color: var(--text-secondary);
+  transition: all 0.2s ease;
+  cursor: pointer;
+  text-align: left;
+}
+
+.lessonBtn:hover {
+  background: var(--bg-hover);
+  border-color: rgba(255, 255, 255, 0.2);
+}
+
+.lessonBtn.active {
+  background: rgba(147, 51, 234, 0.1); /* Primary color low opacity */
+  border-color: var(--primary);
+  color: var(--text-primary);
+}
+
+.lessonBtn.active .icon {
+  color: var(--primary);
+}
+
+.lessonTitle {
+  font-weight: 500;
+  font-size: 0.95rem;
+  line-height: 1.4;
+}
+
+.contentCard {
+  min-height: 100%;
+  padding: 2.5rem;
+  background: var(--bg-card);
+  border: 1px solid var(--border-glass);
+  border-radius: 16px;
+}
+
+.courseHeader {
+  margin-bottom: 2rem;
+  padding-bottom: 2rem;
+  border-bottom: 1px solid var(--border-glass);
+}
+
+.courseTitle {
+  font-size: 2rem;
+  font-weight: 700;
+  margin-bottom: 0.5rem;
+  color: var(--text-primary);
+}
+
+.courseDescription {
+  color: var(--text-secondary);
+  font-size: 1.1rem;
+  line-height: 1.6;
+}
+
+.lessonSummary {
+  padding-bottom: 1rem;
+}
+
+.lessonTitleHeading {
+  font-size: 1.2rem;
+  font-weight: 600;
+  margin-bottom: 0.5rem;
+  padding-left: 0.5rem;
+}
+
+.lessonItem {
+  margin-bottom: 0.5rem;
+}
+
+.completedIcon {
+  color: #10b981;
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.progressContainer {
+  margin-top: 1rem;
+}
+
+.progressBarOuter {
+  height: 10px;
+  border-radius: 999px;
+  background: #e5e7eb;
+  overflow: hidden;
+  margin-top: 0.25rem;
+}
+
+.progressBarInner {
+  height: 100%;
+  background: linear-gradient(90deg, #4f46e5, #8b5cf6);
+  transition: width 0.3s ease;
+}
+
+.progressText {
+  margin-top: 1rem;
+}
+
+.markButton {
+  margin-top: 0.5rem;
+}
+
+.lessonContentArea h2 {
+  font-size: 1.75rem;
+  font-weight: 600;
+  margin-bottom: 1.5rem;
+  color: var(--text-primary);
+}
+
+.lessonText {
+  color: var(--text-secondary);
+  font-size: 1.1rem;
+  line-height: 1.8;
+}
+
+/* Custom styles for our manual markdown parsing */
+.lessonText p {
+  margin-bottom: 1.5rem;
+}
+
+.lessonText strong {
+  color: var(--text-primary);
+  font-weight: 600;
+}
+
+.loaderContainer {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  color: var(--text-secondary);
+}
+
+@media (max-width: 1024px) {
+  .container {
+    flex-direction: column;
+    height: auto;
+  }
+  
+  .sidebar {
+    width: 100%;
+    max-height: 300px;
+  }
+}

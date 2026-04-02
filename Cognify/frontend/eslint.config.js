@@ -15,6 +15,10 @@ export default defineConfig([
       reactHooks.configs.flat.recommended,
       reactRefresh.configs.vite,
     ],
+    rules: {
+      'react-hooks/set-state-in-effect': 'off',
+      'jsx-a11y/media-has-caption': 'off'
+    },
     languageOptions: {
       ecmaVersion: 2020,
       globals: globals.browser,

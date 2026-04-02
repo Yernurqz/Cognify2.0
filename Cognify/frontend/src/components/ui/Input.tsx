@@ -9,13 +9,17 @@ interface InputProps extends React.InputHTMLAttributes<HTMLInputElement> {
 
 export const Input = React.forwardRef<HTMLInputElement, InputProps>(
   ({ label, error, className = '', icon, ...props }, ref) => {
+    const fallbackId = React.useId();
+    const inputId = props.id || fallbackId;
+
     return (
       <div className={`${styles.container} ${className}`}>
-        {label && <label className={styles.label}>{label}</label>}
+        {label && <label className={styles.label} htmlFor={inputId}>{label}</label>}
         <div className={styles.inputWrapper}>
           {icon && <span className={styles.icon}>{icon}</span>}
           <input
             ref={ref}
+            id={inputId}
             className={`${styles.input} ${icon ? styles.hasIcon : ''}`}
             {...props}
           />

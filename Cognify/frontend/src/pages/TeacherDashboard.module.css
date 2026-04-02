@@ -1,26 +1,214 @@
-.grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-  gap: 1.5rem;
-  margin-top: 2rem;
+/* Risk Group Styles */
+.riskCardContainer {
+  border: 1px solid rgba(244, 63, 94, 0.2);
+  background: rgba(244, 63, 94, 0.02) !important;
 }
+
+.riskBadge {
+  background: rgba(244, 63, 94, 0.1);
+  color: #f43f5e;
+  padding: 0.25rem 0.75rem;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.riskItem {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1rem 0;
+  border-bottom: 1px solid var(--border-glass);
+}
+
+.riskItem:last-child {
+  border-bottom: none;
+}
+
+.riskUser {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.riskAvatar {
+  width: 40px;
+  height: 40px;
+  background: linear-gradient(135deg, #f43f5e, #fb7185);
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  font-weight: 700;
+}
+
+.riskName {
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.riskReason {
+  font-size: 0.75rem;
+  color: #fb7185;
+}
+
+.riskStats {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.riskScore {
+  font-weight: 700;
+  color: #f43f5e;
+}
+
+.contactBtn {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--border-glass);
+  color: var(--text-primary);
+  padding: 0.4rem 0.8rem;
+  border-radius: 8px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.contactBtn:hover {
+  background: #f43f5e;
+  border-color: #f43f5e;
+  color: white;
+}
+
+.riskFooter {
+  margin-top: 1rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--border-glass);
+  text-align: center;
+  font-size: 0.875rem;
+  color: var(--text-secondary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  cursor: pointer;
+}
+
+.statMini {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  margin-top: 0.5rem;
+}
+
+.courseCardSimple {
+  border: 1px solid var(--border-glass);
+  background: rgba(255, 255, 255, 0.01) !important;
+}
+
 
 .statsGrid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
   gap: 1.5rem;
-  margin-bottom: 2rem;
+  margin-top: 1rem;
 }
 
-.statCard {
-  text-align: center;
+.statCardFixed {
+  border: 1px solid var(--border-glass);
+}
+
+.statLabel {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  color: var(--text-secondary);
+  font-size: 0.875rem;
+  font-weight: 500;
+  margin-bottom: 1rem;
 }
 
 .statValue {
-  font-size: 2.5rem;
+  font-size: 2.25rem;
   font-weight: 700;
-  color: var(--primary);
-  margin-top: 0.5rem;
+  color: var(--text-primary);
+  line-height: 1;
+}
+
+.statChange {
+  margin-top: 0.75rem;
+  font-size: 0.8125rem;
+  color: var(--success);
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+/* Productivity Chart */
+.chartContainer {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  height: 200px;
+  padding: 1rem 0;
+  gap: 1rem;
+}
+
+.chartBarWrapper {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.chartBar {
+  width: 100%;
+  max-width: 40px;
+  background: linear-gradient(to top, var(--primary), var(--secondary));
+  border-radius: 8px 8px 4px 4px;
+  position: relative;
+  transition: all 1.2s cubic-bezier(0.16, 1, 0.3, 1);
+  box-shadow: 0 0 15px rgba(139, 92, 246, 0.15);
+  cursor: pointer;
+}
+
+.chartBar:hover {
+  filter: brightness(1.2);
+  box-shadow: 0 0 25px rgba(139, 92, 246, 0.3);
+}
+
+.chartBar:hover .barTooltip {
+  opacity: 1;
+  transform: translateX(-50%) translateY(-10px);
+}
+
+.barTooltip {
+  position: absolute;
+  top: -30px;
+  left: 50%;
+  transform: translateX(-50%) translateY(0);
+  background: var(--bg-surface);
+  color: white;
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-size: 0.75rem;
+  opacity: 0;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+  pointer-events: none;
+  border: 1px solid var(--border-glass);
+}
+
+.chartDay {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  font-weight: 500;
 }
 
 .courseImage {

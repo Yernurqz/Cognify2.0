@@ -1,5 +1,6 @@
 datasource db {
-  provider = "postgresql"
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
 }
 
 generator client {
@@ -7,38 +8,211 @@ generator client {
 }
 
 model User {
-  id        String   @id @default(uuid())
-  email     String   @unique
-  name      String?
-  role      Role     @default(STUDENT)
-  courses   Course[] @relation("TeacherCourses")
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id             String       @id @default(uuid())
+  email          String       @unique
+  password       String
+  name           String?
+  nickname       String?
+  bio            String?
+  avatarUrl      String?
+  role           String       @default("STUDENT")
+  xp             Int          @default(0)
+  streakDays     Int          @default(0)
+  lastActiveDate DateTime?
+  courses        Course[]     @relation("TeacherCourses")
+  enrollments    Enrollment[]
+  grades         Grade[]
+  progress       Progress[]
+  assessments    CourseAssessment[]
+  notifications  Notification[]
+  messages       CourseMessage[] @relation("UserMessages")
+  moderatedMessages CourseMessage[] @relation("ModeratedMessages")
+  refreshTokens  RefreshToken[]
+  auditLogs      AuditLog[] @relation("ActorAuditLogs")
+  mediaAssets    MediaAsset[] @relation("UserMediaAssets")
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
 }
 
 model Course {
-  id          String   @id @default(uuid())
+  id          String       @id @default(uuid())
   title       String
   description String?
+  aiGenerated Boolean      @default(false)
+  templateKey String?
+  language    String       @default("en")
+  targetAudience String?
+  estimatedWeeks Int?
+  learningGoals String?
+  dueDate     DateTime?
   teacherId   String
-  teacher     User     @relation("TeacherCourses", fields: [teacherId], references: [id])
+  teacher     User         @relation("TeacherCourses", fields: [teacherId], references: [id])
   lessons     Lesson[]
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  enrollments Enrollment[]
+  assessments CourseAssessment[]
+  messages    CourseMessage[]
+  mediaAssets MediaAsset[]
+  subtitleTracks SubtitleTrack[]
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
 }
 
 model Lesson {
   id        String   @id @default(uuid())
   title     String
   content   String?
-  courseId  String
-  course    Course   @relation(fields: [courseId], references: [id])
+  order     Int      @default(0)
+  courseId   String
+  course    Course   @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  grades    Grade[]
+  progress  Progress[]
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }
 
-enum Role {
-  STUDENT
-  TEACHER
-  ADMIN
+model Enrollment {
+  id         String   @id @default(uuid())
+  studentId  String
+  student    User     @relation(fields: [studentId], references: [id])
+  courseId    String
+  course     Course   @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  enrolledAt DateTime @default(now())
+
+  @@unique([studentId, courseId])
+}
+
+model Grade {
+  id        String   @id @default(uuid())
+  score     Float
+  feedback  String?
+  studentId String
+  student   User     @relation(fields: [studentId], references: [id])
+  lessonId  String
+  lesson    Lesson   @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([studentId, lessonId])
+}
+
+model Progress {
+  id          String   @id @default(uuid())
+  studentId   String
+  student     User     @relation(fields: [studentId], references: [id])
+  lessonId    String
+  lesson      Lesson   @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+  completedAt DateTime @default(now())
+
+  @@unique([studentId, lessonId])
+}
+
+model CourseAssessment {
+  id                String   @id @default(uuid())
+  studentId         String
+  courseId          String
+  score             Float
+  passed            Boolean  @default(false)
+  certificateIssued Boolean  @default(false)
+  certificateCode   String?  @unique
+  weakLessons       String?
+  adaptiveState     String?
+  riskScore         Float?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+  student           User     @relation(fields: [studentId], references: [id])
+  course            Course   @relation(fields: [courseId], references: [id], onDelete: Cascade)
+
+  @@unique([studentId, courseId])
+}
+
+model Notification {
+  id        String   @id @default(uuid())
+  userId    String
+  type      String
+  title     String
+  message   String
+  read      Boolean  @default(false)
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model CourseMessage {
+  id           String   @id @default(uuid())
+  courseId     String
+  userId       String
+  content      String
+  pinned       Boolean  @default(false)
+  hidden       Boolean  @default(false)
+  moderatedBy  String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  course       Course   @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  user         User     @relation("UserMessages", fields: [userId], references: [id], onDelete: Cascade)
+  moderator    User?    @relation("ModeratedMessages", fields: [moderatedBy], references: [id])
+}
+
+model IntegrationSetting {
+  id        String   @id @default(uuid())
+  teacherId String
+  provider  String
+  webhook   String?
+  enabled   Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([teacherId, provider])
+}
+
+model RefreshToken {
+  id         String   @id @default(uuid())
+  userId     String
+  tokenHash  String   @unique
+  userAgent  String?
+  ipAddress  String?
+  revoked    Boolean  @default(false)
+  expiresAt  DateTime
+  createdAt  DateTime @default(now())
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model AuditLog {
+  id         String   @id @default(uuid())
+  actorId    String?
+  action     String
+  entityType String
+  entityId   String?
+  method     String?
+  path       String?
+  metadata   String?
+  createdAt  DateTime @default(now())
+  actor      User?    @relation("ActorAuditLogs", fields: [actorId], references: [id])
+}
+
+model MediaAsset {
+  id          String   @id @default(uuid())
+  userId      String?
+  courseId    String?
+  kind        String
+  storageType String
+  originalName String?
+  mimeType    String?
+  sizeBytes   Int?
+  path        String
+  publicUrl   String
+  createdAt   DateTime @default(now())
+  user        User?    @relation("UserMediaAssets", fields: [userId], references: [id])
+  course      Course?  @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  subtitleTracks SubtitleTrack[]
+}
+
+model SubtitleTrack {
+  id         String   @id @default(uuid())
+  courseId   String
+  mediaAssetId String?
+  language   String   @default("en")
+  provider   String
+  vttContent String
+  createdAt  DateTime @default(now())
+  course     Course   @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  mediaAsset MediaAsset? @relation(fields: [mediaAssetId], references: [id], onDelete: SetNull)
 }

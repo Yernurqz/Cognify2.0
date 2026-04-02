@@ -1,46 +1,71 @@
+import 'dotenv/config';
 import express from 'express';
 import cors from 'cors';
-import dotenv from 'dotenv';
-import { PrismaClient } from '@prisma/client';
-import Redis from 'ioredis';
 
-dotenv.config();
+// Prevent backend crashes from unhandled errors
+process.on('uncaughtException', (err) => {
+    console.error('CRITICAL: Uncaught Exception:', err);
+});
+
+process.on('unhandledRejection', (reason, promise) => {
+    console.error('CRITICAL: Unhandled Rejection at:', promise, 'reason:', reason);
+});
+
+import prisma from './lib/prisma';
+import authRoutes from './routes/auth';
+import courseRoutes from './routes/courses';
+import enrollmentRoutes from './routes/enrollment';
+import aiRoutes from './routes/ai';
+import statsRoutes from './routes/stats';
+import progressRoutes from './routes/progress';
+import gradesRoutes from './routes/grades';
+import assessmentsRoutes from './routes/assessments';
+import teacherRoutes from './routes/teacher';
+import profileRoutes from './routes/profile';
+import notificationsRoutes from './routes/notifications';
+import chatRoutes from './routes/chat';
+import integrationsRoutes from './routes/integrations';
+import { apiRateLimit, auditLogMiddleware, authRateLimit } from './middleware/security';
+import mediaRoutes from './routes/media';
+import subtitlesRoutes from './routes/subtitles';
 
 const app = express();
 const port = process.env.PORT || 3000;
 
-// Initialize Prisma
-const prisma = new PrismaClient();
-
-// Initialize Redis
-const redis = new Redis(process.env.REDIS_URL || 'redis://localhost:6379');
-
-redis.on('connect', () => {
-    console.log('Connected to Redis');
-});
-
-redis.on('error', (err) => {
-    console.error('Redis connection error:', err);
-});
-
 // Middleware
 app.use(cors());
 app.use(express.json());
+app.use('/uploads', express.static('uploads'));
+app.use(apiRateLimit);
+app.use(auditLogMiddleware);
 
-// Basic Route
-app.get('/api/health', async (req, res) => {
+// Routes
+app.use('/api/auth', authRateLimit, authRoutes);
+app.use('/api/courses', courseRoutes);
+app.use('/api/enroll', enrollmentRoutes);
+app.use('/api/student', enrollmentRoutes);
+app.use('/api/ai', aiRoutes);
+app.use('/api/stats', statsRoutes);
+app.use('/api/progress', progressRoutes);
+app.use('/api/grades', gradesRoutes);
+app.use('/api/assessments', assessmentsRoutes);
+app.use('/api/teacher', teacherRoutes);
+app.use('/api/profile', profileRoutes);
+app.use('/api/notifications', notificationsRoutes);
+app.use('/api/chat', chatRoutes);
+app.use('/api/integrations', integrationsRoutes);
+app.use('/api/media', mediaRoutes);
+app.use('/api/subtitles', subtitlesRoutes);
+// Enrollment routes already mounted above as /api/enroll and /api/student
+
+// Health check
+app.get('/api/health', async (_req, res) => {
     try {
-        // Quick DB check
-        await prisma.$queryRaw`SELECT 1`;
-        
-        // Quick Redis check
-        await redis.set('healthcheck', 'ok', 'EX', 10);
-        const redisVal = await redis.get('healthcheck');
+        await prisma.$queryRawUnsafe('SELECT 1');
 
-        res.json({ 
-            status: 'ok', 
-            database: 'connected', 
-            redis: redisVal === 'ok' ? 'connected' : 'error' 
+        res.json({
+            status: 'ok',
+            database: 'connected',
         });
     } catch (error) {
         console.error('Healthcheck failed:', error);
@@ -49,5 +74,5 @@ app.get('/api/health', async (req, res) => {
 });
 
 app.listen(port, () => {
-    console.log(`Server is running on port ${port}`);
+    console.log(`🚀 Cognify API running on http://localhost:${port}`);
 });

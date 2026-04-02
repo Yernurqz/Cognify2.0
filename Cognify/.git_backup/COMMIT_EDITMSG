@@ -1,3 +1,0 @@
-Move backend into frontend/backend
-
-Reorganize project structure by moving the backend directory under frontend/. Backend files (e.g. .env, .gitignore, database.js, database.sqlite, package.json, server.js) are renamed/moved to frontend/backend/ so the backend now resides inside the frontend folder for a consolidated project layout.

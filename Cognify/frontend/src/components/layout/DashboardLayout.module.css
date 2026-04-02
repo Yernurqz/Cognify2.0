@@ -37,6 +37,87 @@
   color: var(--text-primary);
 }
 
+.brandIcon {
+  color: var(--primary);
+}
+
+.footerContainer {
+  margin-top: auto;
+}
+
+.logoutButton {
+  width: 100%;
+  border: none;
+  background: transparent;
+}
+
+.settingsButton {
+  padding: 0.5rem;
+  border-radius: 50%;
+  min-width: 40px;
+  justify-content: center;
+}
+
+.controlCluster {
+  display: flex;
+  align-items: center;
+}
+
+.langSwitch {
+  display: inline-flex;
+  gap: 0.25rem;
+  padding: 0.22rem;
+  background: color-mix(in srgb, var(--bg-surface) 70%, transparent);
+  border: 1px solid var(--border-glass);
+  border-radius: 999px;
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--primary) 10%, transparent);
+}
+
+.langBtn {
+  border: none;
+  background: transparent;
+  color: var(--text-secondary);
+  border-radius: 999px;
+  min-width: 42px;
+  padding: 0.3rem 0.55rem;
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.langBtn:hover {
+  color: var(--text-primary);
+}
+
+.langBtnActive {
+  background: linear-gradient(135deg, color-mix(in srgb, var(--primary) 35%, transparent), color-mix(in srgb, var(--secondary) 25%, transparent));
+  color: var(--text-primary);
+  box-shadow: 0 4px 10px color-mix(in srgb, var(--primary) 25%, transparent);
+}
+
+.themeToggle {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  border: 1px solid var(--border-glass);
+  background: color-mix(in srgb, var(--bg-surface) 72%, transparent);
+  color: var(--text-secondary);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all var(--transition-normal);
+}
+
+.themeToggle:hover {
+  color: var(--text-primary);
+  border-color: var(--border-glass-hover);
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-sm);
+}
+
 .mobileCloseBtn {
   display: none;
   background: transparent;
@@ -47,62 +128,67 @@
 }
 
 .nav {
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
+  padding: 0 1rem;
   flex: 1;
 }
 
 .navItem {
   display: flex;
   align-items: center;
-  gap: 0.75rem;
-  padding: 0.875rem 1rem;
-  border-radius: 12px;
+  gap: 1rem;
+  padding: 1rem 1.25rem;
   color: var(--text-secondary);
-  font-weight: 500;
-  transition: all var(--transition-fast);
-  cursor: pointer;
   text-decoration: none;
+  border-radius: 14px;
+  font-weight: 500;
+  margin-bottom: 0.5rem;
+  transition: all var(--transition-normal);
 }
 
 .navItem:hover {
-  background: var(--bg-glass-hover);
+  background: rgba(255, 255, 255, 0.05);
   color: var(--text-primary);
+  transform: translateX(5px);
 }
 
 .navItemActive {
-  background: rgba(99, 102, 241, 0.15);
-  color: var(--primary);
-  border: 1px solid rgba(99, 102, 241, 0.3);
+  background: rgba(139, 92, 246, 0.1);
+  color: var(--primary-hover);
+  box-shadow: inset 0 0 0 1px rgba(139, 92, 246, 0.2);
+}
+
+.navItemActive svg {
+  filter: drop-shadow(0 0 8px var(--primary));
 }
 
 .mainSection {
   flex: 1;
   display: flex;
   flex-direction: column;
+  background-image: 
+    radial-gradient(circle at 50% 0%, rgba(139, 92, 246, 0.05) 0%, transparent 50%);
   overflow-y: auto;
-  overflow-x: hidden;
 }
 
 .header {
-  height: 72px;
+  height: 80px;
+  min-height: 80px;
+  background: rgba(10, 11, 18, 0.4);
+  backdrop-filter: blur(10px);
   border-bottom: 1px solid var(--border-glass);
+  padding: 0 2.5rem;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 0 2rem;
-  background: var(--bg-glass);
-  backdrop-filter: blur(12px);
   position: sticky;
   top: 0;
-  z-index: 5;
+  z-index: 90;
 }
 
 .headerLeft {
   display: flex;
   align-items: center;
-  gap: 1rem;
+  gap: 1.5rem;
 }
 
 .mobileMenuBtn {
@@ -115,13 +201,14 @@
 
 .headerTitle {
   font-size: 1.25rem;
+  color: var(--text-primary);
   font-weight: 600;
 }
 
 .userInfo {
   display: flex;
   align-items: center;
-  gap: 1rem;
+  gap: 0.75rem;
 }
 
 .avatar {
@@ -136,6 +223,7 @@
   color: white;
   border: 2px solid var(--bg-base);
   box-shadow: var(--shadow-sm);
+  object-fit: cover;
 }
 
 .content {
@@ -169,6 +257,11 @@
 
   .header {
     padding: 0 1rem;
+  }
+
+  .langBtn {
+    min-width: 36px;
+    padding: 0.26rem 0.48rem;
   }
 
   .mobileMenuBtn {

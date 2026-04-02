@@ -1,16 +1,20 @@
-import React, { useState } from "react";
-import { NavLink, useNavigate, useLocation } from "react-router-dom";
+import React, { useMemo, useState } from 'react';
+import { NavLink, useLocation, useNavigate } from 'react-router-dom';
 import {
+  Activity,
   BookOpen,
-  LogOut,
   LayoutDashboard,
-  PlusCircle,
-  Users,
-  Settings,
+  LogOut,
   Menu,
+  Moon,
+  PlusCircle,
+  Sun,
+  UserCircle2,
+  Users,
   X,
-} from "lucide-react";
-import styles from "./DashboardLayout.module.css";
+} from 'lucide-react';
+import { usePreferences } from '../../context/PreferencesContext';
+import styles from './DashboardLayout.module.css';
 
 interface NavLinkItem {
   path: string;
@@ -20,79 +24,71 @@ interface NavLinkItem {
 
 interface DashboardLayoutProps {
   children: React.ReactNode;
-  role: "teacher" | "student";
+  role: 'teacher' | 'student';
 }
 
 export const DashboardLayout = ({ children, role }: DashboardLayoutProps) => {
   const navigate = useNavigate();
   const location = useLocation();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const { language, setLanguage, theme, toggleTheme, t } = usePreferences();
+
+  const user = useMemo(() => {
+    try {
+      return JSON.parse(localStorage.getItem('user') || '{}') as { name?: string; nickname?: string; avatarUrl?: string };
+    } catch {
+      return {};
+    }
+  }, []);
 
   const handleLogout = () => {
-    navigate("/auth");
+    const refreshToken = localStorage.getItem('refreshToken');
+    if (refreshToken) {
+      fetch('/api/auth/logout', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ refreshToken }),
+      }).catch(() => null);
+    }
+    localStorage.removeItem('user');
+    localStorage.removeItem('token');
+    localStorage.removeItem('refreshToken');
+    navigate('/auth');
   };
 
   const navLinks: NavLinkItem[] =
-    role === "teacher"
+    role === 'teacher'
       ? [
-          {
-            path: "/teacher/dashboard",
-            label: "Overview",
-            icon: <LayoutDashboard size={20} />,
-          },
-          {
-            path: "/teacher/courses",
-            label: "My Courses",
-            icon: <BookOpen size={20} />,
-          },
-          {
-            path: "/teacher/create",
-            label: "Create Course",
-            icon: <PlusCircle size={20} />,
-          },
-          {
-            path: "/teacher/students",
-            label: "Students",
-            icon: <Users size={20} />,
-          },
+          { path: '/teacher/dashboard', label: t('nav.teacher.dashboard', 'Overview'), icon: <LayoutDashboard size={20} /> },
+          { path: '/teacher/courses', label: t('nav.teacher.courses', 'My Courses'), icon: <BookOpen size={20} /> },
+          { path: '/teacher/create', label: t('nav.teacher.create', 'Create Course'), icon: <PlusCircle size={20} /> },
+          { path: '/teacher/students', label: t('nav.teacher.students', 'Students'), icon: <Users size={20} /> },
+          { path: '/teacher/profile', label: 'Profile', icon: <UserCircle2 size={20} /> },
         ]
       : [
-          {
-            path: "/student/dashboard",
-            label: "My Learning",
-            icon: <LayoutDashboard size={20} />,
-          },
-          {
-            path: "/student/catalog",
-            label: "Course Catalog",
-            icon: <BookOpen size={20} />,
-          },
+          { path: '/student/dashboard', label: t('nav.student.dashboard', 'My Learning'), icon: <LayoutDashboard size={20} /> },
+          { path: '/student/catalog', label: t('nav.student.catalog', 'Catalog'), icon: <BookOpen size={20} /> },
+          { path: '/student/admin', label: t('nav.student.admin', 'Analytics'), icon: <Activity size={20} /> },
+          { path: '/student/profile', label: 'Profile', icon: <UserCircle2 size={20} /> },
         ];
+
+  const currentTitle = navLinks.find((item) => location.pathname.startsWith(item.path))?.label || 'Dashboard';
+  const initials = (user.nickname || user.name || (role === 'teacher' ? 'Teacher' : 'Student')).slice(0, 2).toUpperCase();
 
   return (
     <div className={styles.layout}>
-      {/* Mobile Menu Overlay */}
-      {isMobileMenuOpen && (
-        <div
-          className={styles.overlay}
-          onClick={() => setIsMobileMenuOpen(false)}
-        />
-      )}
+      {isMobileMenuOpen && <div className={styles.overlay} onClick={() => setIsMobileMenuOpen(false)} />}
 
-      {/* Sidebar Navigation */}
-      <aside
-        className={`${styles.sidebar} ${isMobileMenuOpen ? styles.sidebarOpen : ""}`}
-      >
+      <aside className={`${styles.sidebar} ${isMobileMenuOpen ? styles.sidebarOpen : ''}`}>
         <div className={styles.brand}>
-          <div style={{ color: "var(--primary)" }}>
+          <div className={styles.brandIcon}>
             <BookOpen size={28} />
           </div>
-          <span className="text-gradient">Cognify</span>
-
-          {/* Mobile Close Button */}
+          <span className="text-gradient">{t('brand.name', 'Cognify')}</span>
           <button
             className={styles.mobileCloseBtn}
             onClick={() => setIsMobileMenuOpen(false)}
+            aria-label="Close menu"
           >
             <X size={24} />
           </button>
@@ -100,12 +96,12 @@ export const DashboardLayout = ({ children, role }: DashboardLayoutProps) => {
 
         <nav className={styles.nav}>
           {navLinks.map((link) => {
-            const isActive = location.pathname === link.path;
+            const isActive = location.pathname.startsWith(link.path);
             return (
               <NavLink
                 key={link.path}
                 to={link.path}
-                className={`${styles.navItem} ${isActive ? styles.navItemActive : ""}`}
+                className={`${styles.navItem} ${isActive ? styles.navItemActive : ''}`}
                 onClick={() => setIsMobileMenuOpen(false)}
               >
                 {link.icon}
@@ -115,43 +111,62 @@ export const DashboardLayout = ({ children, role }: DashboardLayoutProps) => {
           })}
         </nav>
 
-        <div style={{ marginTop: "auto" }}>
-          <button
-            className={styles.navItem}
-            style={{ width: "100%", border: "none", background: "transparent" }}
-            onClick={handleLogout}
-          >
+        <div className={styles.footerContainer}>
+          <button className={`${styles.navItem} ${styles.logoutButton}`} onClick={handleLogout}>
             <LogOut size={20} />
-            Logout
+            {t('layout.logout', 'Logout')}
           </button>
         </div>
       </aside>
 
-      {/* Main Content Area */}
       <main className={styles.mainSection}>
         <header className={styles.header}>
           <div className={styles.headerLeft}>
-            <button
-              className={styles.mobileMenuBtn}
-              onClick={() => setIsMobileMenuOpen(true)}
-            >
+            <button className={styles.mobileMenuBtn} onClick={() => setIsMobileMenuOpen(true)} aria-label="Open menu">
               <Menu size={24} />
             </button>
-            <h2 className={styles.headerTitle}>
-              {navLinks.find((l) => l.path === location.pathname)?.label ||
-                "Dashboard"}
-            </h2>
+            <h2 className={styles.headerTitle}>{currentTitle}</h2>
           </div>
           <div className={styles.userInfo}>
-            <button
-              className={styles.navItem}
-              style={{ padding: "0.5rem", borderRadius: "50%" }}
-            >
-              <Settings size={20} />
-            </button>
-            <div className={styles.avatar}>
-              {role === "teacher" ? "TR" : "ST"}
+            <div className={styles.controlCluster}>
+              <div className={styles.langSwitch} aria-label={t('layout.language', 'Language')}>
+                <button
+                  className={`${styles.langBtn} ${language === 'ru' ? styles.langBtnActive : ''}`}
+                  onClick={() => setLanguage('ru')}
+                  type="button"
+                >
+                  RU
+                </button>
+                <button
+                  className={`${styles.langBtn} ${language === 'en' ? styles.langBtnActive : ''}`}
+                  onClick={() => setLanguage('en')}
+                  type="button"
+                >
+                  EN
+                </button>
+                <button
+                  className={`${styles.langBtn} ${language === 'kk' ? styles.langBtnActive : ''}`}
+                  onClick={() => setLanguage('kk')}
+                  type="button"
+                >
+                  KZ
+                </button>
+              </div>
             </div>
+            <button
+              className={styles.themeToggle}
+              aria-label={t('layout.theme', 'Theme')}
+              onClick={toggleTheme}
+              title={theme === 'dark' ? t('layout.dark', 'Dark') : t('layout.light', 'Light')}
+              type="button"
+            >
+              {theme === 'dark' ? <Moon size={18} /> : <Sun size={18} />}
+            </button>
+            {user.avatarUrl ? (
+              <img src={user.avatarUrl} alt="avatar" className={styles.avatar} />
+            ) : (
+              <div className={styles.avatar}>{initials}</div>
+            )}
           </div>
         </header>
 

@@ -3,12 +3,31 @@ import { useNavigate } from 'react-router-dom';
 import { Play, Sparkles, Brain, Award } from 'lucide-react';
 import { Card, CardBody, CardTitle, CardFooter } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
+import { authFetch } from '../lib/api';
 import styles from './StudentDashboard.module.css';
+
+interface User {
+  id: string;
+  name: string | null;
+  email: string;
+  role: string;
+  xp?: number;
+  streakDays?: number;
+}
+
+interface Course {
+  id: string;
+  title: string;
+  description: string | null;
+  teacher: {
+    name: string | null;
+  };
+}
 
 export const StudentDashboard = () => {
   const navigate = useNavigate();
-  const [courses, setCourses] = useState<any[]>([]);
-  const [user, setUser] = useState<any>(null);
+  const [courses, setCourses] = useState<Course[]>([]);
+  const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
@@ -17,10 +36,10 @@ export const StudentDashboard = () => {
       navigate('/auth');
       return;
     }
-    const parsedUser = JSON.parse(storedUser);
+    const parsedUser: User = JSON.parse(storedUser);
     setUser(parsedUser);
 
-    fetch(`http://localhost:5000/api/student/courses/${parsedUser.id}`)
+    authFetch(`/api/student/courses/${parsedUser.id}`)
       .then(res => res.json())
       .then(data => {
         if (data.courses) setCourses(data.courses);
@@ -50,6 +69,10 @@ export const StudentDashboard = () => {
                   ? 'Your personalized learning paths are ready. Select a course to keep making progress.' 
                   : 'You have not enrolled in any courses yet. Check the Course Catalog to begin your learning.'}
               </p>
+              <div style={{ marginTop: '0.7rem', display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
+                <span style={{ color: 'var(--text-secondary)' }}>XP: {user.xp || 0}</span>
+                <span style={{ color: 'var(--text-secondary)' }}>Streak: {user.streakDays || 0} days</span>
+              </div>
               <div style={{ marginTop: '1.5rem', display: 'flex', gap: '1rem' }}>
                 <Button variant="primary" icon={<Sparkles size={18} />} onClick={() => navigate('/student/catalog')}>Browse Catalog</Button>
               </div>
@@ -87,7 +110,7 @@ export const StudentDashboard = () => {
                     </div>
                   </CardBody>
                   <CardFooter>
-                    <Button fullWidth icon={<Play size={18} />}>Resume Learning</Button>
+                    <Button fullWidth icon={<Play size={18} />} onClick={() => navigate(`/course/${course.id}`)}>Resume Learning</Button>
                   </CardFooter>
                 </Card>
               ))}
