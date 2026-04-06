@@ -20,7 +20,7 @@ export const Input = React.forwardRef<HTMLInputElement, InputProps>(
           <input
             ref={ref}
             id={inputId}
-            className={`${styles.input} ${icon ? styles.hasIcon : ''}`}
+            className={`glass-input ${styles.input} ${icon ? styles.hasIcon : ''}`}
             {...props}
           />
         </div>

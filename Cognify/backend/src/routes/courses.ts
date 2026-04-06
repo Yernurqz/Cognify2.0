@@ -9,6 +9,72 @@ const router = Router();
 router.get('/', async (req, res: Response) => {
     console.log('Courses route called with query:', req.query);
     try {
+        const bootstrapCourses = [
+            {
+                title: 'Drone Operations for Precision Agriculture',
+                description: 'A practical course on drone safety, mapping, monitoring fields, and applying UAV data in modern farming.',
+                language: 'en',
+                targetAudience: 'Agronomy students and drone operators',
+                estimatedWeeks: 6,
+                learningGoals: JSON.stringify([
+                    'Understand drone safety and flight planning',
+                    'Use aerial imagery for crop monitoring',
+                    'Interpret drone-based field analytics',
+                ]),
+                lessons: [
+                    { title: 'Drone Basics and Safety', content: 'Understand UAV parts, pre-flight checks, risk zones, and legal safety basics.' },
+                    { title: 'Flight Planning for Fields', content: 'Plan agricultural routes, battery cycles, and survey logic for farms.' },
+                    { title: 'Crop Monitoring with Aerial Data', content: 'Use drone imagery to inspect crop stress, irrigation, and field variability.' },
+                    { title: 'Actionable Drone Reports', content: 'Turn field imagery into short reports and decisions for precision farming.' },
+                ],
+            },
+            {
+                title: 'Agronomy Foundations and Smart Farming',
+                description: 'A foundational agronomy course covering soil, crops, irrigation, nutrition, and smart farming decisions.',
+                language: 'ru',
+                targetAudience: 'Students of agronomy and agricultural management',
+                estimatedWeeks: 8,
+                learningGoals: JSON.stringify([
+                    'Understand soil and crop fundamentals',
+                    'Compare irrigation and nutrition strategies',
+                    'Apply smart farming methods in real scenarios',
+                ]),
+                lessons: [
+                    { title: 'Soil and Plant Fundamentals', content: 'Learn soil structure, plant growth stages, and the basics of field readiness.' },
+                    { title: 'Water, Irrigation, and Yield', content: 'Study irrigation strategies, water stress, and practical yield factors.' },
+                    { title: 'Plant Nutrition and Protection', content: 'Review nutrient planning, field scouting, and sustainable crop protection.' },
+                    { title: 'Digital Agronomy Decisions', content: 'Connect sensors, analytics, and field observations for smart farming.' },
+                ],
+            },
+        ];
+
+        for (const item of bootstrapCourses) {
+            const existing = await prisma.course.findFirst({ where: { title: item.title } });
+            if (!existing) {
+                const teacher = await prisma.user.findFirst({ where: { role: { in: ['TEACHER', 'ADMIN'] } } });
+                if (teacher) {
+                    await prisma.course.create({
+                        data: {
+                            title: item.title,
+                            description: item.description,
+                            language: item.language,
+                            targetAudience: item.targetAudience,
+                            estimatedWeeks: item.estimatedWeeks,
+                            learningGoals: item.learningGoals,
+                            teacherId: teacher.id,
+                            lessons: {
+                                create: item.lessons.map((lesson, index) => ({
+                                    title: lesson.title,
+                                    content: lesson.content,
+                                    order: index,
+                                })),
+                            },
+                        },
+                    });
+                }
+            }
+        }
+
         const page = Math.max(Number(req.query.page || 1), 1);
         const limit = Math.min(Math.max(Number(req.query.limit || 20), 5), 100);
         const search = String(req.query.search || '').trim();
@@ -147,10 +213,29 @@ router.put('/:id', authMiddleware, requireRole('TEACHER', 'ADMIN'), async (req: 
             return;
         }
 
-        const { title, description } = req.body;
+        const { title, description, lessons, language, targetAudience, estimatedWeeks, learningGoals } = req.body;
+        if (Array.isArray(lessons)) {
+            await prisma.lesson.deleteMany({ where: { courseId } });
+        }
         const course = await prisma.course.update({
             where: { id: courseId },
-            data: { title, description },
+            data: {
+                title,
+                description,
+                language: typeof language === 'string' ? language : undefined,
+                targetAudience: typeof targetAudience === 'string' ? targetAudience : undefined,
+                estimatedWeeks: typeof estimatedWeeks === 'number' ? estimatedWeeks : undefined,
+                learningGoals: Array.isArray(learningGoals) ? JSON.stringify(learningGoals) : learningGoals,
+                lessons: Array.isArray(lessons)
+                    ? {
+                          create: lessons.map((lesson: { title: string; content?: string }, index: number) => ({
+                              title: lesson.title,
+                              content: lesson.content || null,
+                              order: index,
+                          })),
+                      }
+                    : undefined,
+            },
             include: { lessons: true },
         });
 

@@ -102,6 +102,46 @@ router.post('/course/:courseId/video', authMiddleware, requireRole('TEACHER', 'A
     }
 });
 
+router.post('/course/:courseId/video-link', authMiddleware, requireRole('TEACHER', 'ADMIN'), async (req: AuthRequest, res: Response) => {
+    try {
+        const courseId = String(req.params.courseId);
+        const publicUrl = String(req.body?.publicUrl || '').trim();
+        const title = String(req.body?.title || 'External video').trim();
+
+        if (!publicUrl) {
+            res.status(400).json({ error: 'publicUrl is required.' });
+            return;
+        }
+
+        const course = await prisma.course.findUnique({ where: { id: courseId } });
+        if (!course) {
+            res.status(404).json({ error: 'Course not found.' });
+            return;
+        }
+        if (req.user!.role !== 'ADMIN' && course.teacherId !== req.user!.id) {
+            res.status(403).json({ error: 'Forbidden.' });
+            return;
+        }
+
+        const media = await prisma.mediaAsset.create({
+            data: {
+                userId: req.user!.id,
+                courseId,
+                kind: 'video_link',
+                storageType: 'external',
+                originalName: title,
+                mimeType: 'text/uri-list',
+                path: publicUrl,
+                publicUrl,
+            },
+        });
+        res.status(201).json({ media });
+    } catch (error) {
+        console.error('External video link error:', error);
+        res.status(500).json({ error: 'Internal server error.' });
+    }
+});
+
 router.get('/course/:courseId', authMiddleware, async (req: AuthRequest, res: Response) => {
     try {
         const courseId = String(req.params.courseId);

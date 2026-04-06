@@ -9,6 +9,12 @@
   text-align: center;
 }
 
+.headerText {
+  color: var(--text-secondary);
+  font-size: 1rem;
+  margin: 0;
+}
+
 /* Tab Switcher Styles */
 .tabSwitcher {
   display: flex;
@@ -115,6 +121,44 @@
   margin-top: 2rem;
   border-top: 1px solid var(--border-glass);
   padding-top: 2rem;
+}
+
+.successCard {
+  border: 1px solid var(--success);
+  background: rgba(16, 185, 129, 0.08);
+}
+
+.successContent {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 1.25rem;
+}
+
+.successIcon {
+  color: var(--success);
+}
+
+.successTitle {
+  font-size: 2rem;
+  margin: 0;
+}
+
+.successText {
+  color: var(--text-secondary);
+  max-width: 640px;
+}
+
+.successActions {
+  display: flex;
+  gap: 1rem;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+.formActions {
+  margin-top: 1.5rem;
 }
 
 .lessonEntry {

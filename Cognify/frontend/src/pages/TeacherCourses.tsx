@@ -1,8 +1,10 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { BookOpen, PlusCircle, Users } from 'lucide-react';
+import { BookOpen, PlusCircle, Search, Users } from 'lucide-react';
 import { Button } from '../components/ui/Button';
 import { Card, CardBody } from '../components/ui/Card';
+import { Skeleton } from '../components/Skeleton';
+import { usePreferences } from '../context/PreferencesContext';
 import styles from './TeacherDashboard.module.css';
 
 interface User {
@@ -14,6 +16,7 @@ interface TeacherCourse {
   title: string;
   description: string | null;
   aiGenerated: boolean;
+  teacherId?: string;
   _count?: {
     enrollments: number;
   };
@@ -21,8 +24,26 @@ interface TeacherCourse {
 
 export const TeacherCourses = () => {
   const navigate = useNavigate();
+  const { t } = usePreferences();
   const [courses, setCourses] = useState<TeacherCourse[]>([]);
+  const [allCourses, setAllCourses] = useState<TeacherCourse[]>([]);
   const [loading, setLoading] = useState(true);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [filterMode, setFilterMode] = useState<'all' | 'ai' | 'manual'>('all');
+
+  const filteredCourses = useMemo(() => {
+    return courses.filter((course) => {
+      const matchesMode = filterMode === 'all' || (filterMode === 'ai' && course.aiGenerated) || (filterMode === 'manual' && !course.aiGenerated);
+      const searchText = `${course.title} ${course.description || ''}`.toLowerCase();
+      const matchesSearch = searchText.includes(searchQuery.toLowerCase().trim());
+      return matchesMode && matchesSearch;
+    });
+  }, [courses, filterMode, searchQuery]);
+
+  const sharedCourses = useMemo(
+    () => allCourses.filter((course) => course.teacherId && course.teacherId !== JSON.parse(localStorage.getItem('user') || '{}').id),
+    [allCourses],
+  );
 
   useEffect(() => {
     const storedUser = localStorage.getItem('user');
@@ -31,54 +52,151 @@ export const TeacherCourses = () => {
       return;
     }
     const user = JSON.parse(storedUser) as User;
-    fetch(`/api/courses?teacherId=${user.id}&limit=50`)
-      .then((res) => res.json())
-      .then((data) => setCourses(data.courses || []))
+    Promise.all([
+      fetch(`/api/courses?teacherId=${user.id}&limit=50`),
+      fetch('/api/courses?limit=100'),
+    ])
+      .then(async ([teacherRes, allRes]) => {
+        const teacherData = await teacherRes.json();
+        const allData = await allRes.json();
+        setCourses(teacherData.courses || []);
+        setAllCourses(allData.courses || []);
+      })
       .catch((err) => console.error('Courses fetch error:', err))
       .finally(() => setLoading(false));
   }, [navigate]);
 
   return (
     <div>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem' }}>
-        <h1 className="text-gradient" style={{ fontSize: '2rem' }}>My Courses</h1>
+      <div className={styles.sectionHeader}>
+        <div>
+          <h1 className="text-gradient" style={{ fontSize: '2rem', marginBottom: '0.25rem' }}>{t('teacher.courses.title', 'My Courses')}</h1>
+          <p className={styles.headerText}>{t('teacher.courses.headerDesc', 'Manage your teaching portfolio and create courses with confidence.')}</p>
+        </div>
         <Button icon={<PlusCircle size={18} />} onClick={() => navigate('/teacher/create')}>
-          Create Course
+          {t('teacher.createCourse', 'Create Course')}
         </Button>
       </div>
+
+      <div className={styles.searchToolbar}>
+        <div className={styles.searchInputWrapper}>
+          <Search size={18} />
+          <input
+            type="search"
+            placeholder={t('teacher.courses.searchPlaceholder', 'Search course titles or descriptions...')}
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className={styles.searchField}
+          />
+        </div>
+        <div className={styles.filterChips}>
+          {['all', 'ai', 'manual'].map((mode) => (
+            <button
+              key={mode}
+              type="button"
+              className={`${styles.chipButton} ${filterMode === mode ? styles.activeChip : ''}`}
+              onClick={() => setFilterMode(mode as 'all' | 'ai' | 'manual')}
+            >
+              {mode === 'all'
+                ? t('teacher.courses.filterAll', 'All Courses')
+                : mode === 'ai'
+                ? t('teacher.courses.filterAI', 'AI Courses')
+                : t('teacher.courses.filterManual', 'Manual Courses')}
+            </button>
+          ))}
+        </div>
+      </div>
+
       {loading ? (
-        <p>Loading...</p>
-      ) : courses.length === 0 ? (
-        <Card>
-          <CardBody style={{ textAlign: 'center', padding: '2.5rem' }}>
-            <BookOpen size={42} style={{ margin: '0 auto 1rem', color: 'var(--text-muted)' }} />
-            <p style={{ color: 'var(--text-secondary)' }}>You do not have courses yet.</p>
-          </CardBody>
-        </Card>
-      ) : (
         <div className={styles.grid}>
-          {courses.map((course) => (
-            <Card key={course.id} interactive>
+          {Array.from({ length: 3 }).map((_, index) => (
+            <Card key={index}>
               <CardBody>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
-                  <h3 style={{ fontSize: '1.05rem', fontWeight: 700 }}>{course.title}</h3>
-                  <span style={{ fontSize: '0.75rem', color: course.aiGenerated ? 'var(--success)' : 'var(--text-muted)' }}>
-                    {course.aiGenerated ? 'AI' : 'Manual'}
-                  </span>
-                </div>
-                <p style={{ color: 'var(--text-secondary)', marginBottom: '0.75rem' }}>
-                  {course.description || 'No description'}
-                </p>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', color: 'var(--text-secondary)' }}>
-                  <Users size={16} />
-                  <span>{course._count?.enrollments || 0} students</span>
-                </div>
-                <div style={{ marginTop: '1rem' }}>
-                  <Button size="sm" onClick={() => navigate(`/course/${course.id}`)}>Open Course</Button>
+                <Skeleton lines={2} height="1rem" />
+                <Skeleton width="90%" height="1rem" />
+                <div className={styles.skeletonFooter}>
+                  <Skeleton width="30%" height="1.5rem" />
+                  <Skeleton width="25%" height="2rem" />
                 </div>
               </CardBody>
             </Card>
           ))}
+        </div>
+      ) : filteredCourses.length === 0 ? (
+        <Card className={styles.emptyCard}>
+          <CardBody className={styles.emptyStateCard}>
+            <BookOpen size={42} className={styles.emptyIcon} />
+            <p className={styles.emptyMessage}>{t('teacher.courses.noMatches', 'No courses match the current filters.')}</p>
+          </CardBody>
+        </Card>
+      ) : (
+        <div>
+          <div className={styles.grid}>
+          {filteredCourses.map((course) => (
+            <Card key={course.id} interactive>
+              <CardBody>
+                <div className={styles.courseCardHeader}>
+                  <h3 className={styles.courseTitle}>{course.title}</h3>
+                  <span className={`${styles.aiBadge} ${course.aiGenerated ? '' : styles.manualBadge}`}>
+                    {course.aiGenerated ? t('teacher.courses.aiGenerated', 'AI Generated') : t('teacher.courses.manual', 'Manual')}
+                  </span>
+                </div>
+                <p className={styles.courseDescription}>
+                  {course.description || t('teacher.courses.descriptionFallback', 'Use this space to describe what students will learn in this course.')}
+                </p>
+                <div className={styles.courseMetaRow}>
+                  <div className={styles.metaChip}>
+                    <Users size={14} />
+                    {t('teacher.courses.students', '{count} students', { count: course._count?.enrollments || 0 })}
+                  </div>
+                </div>
+                <div className={styles.courseActions}>
+                  <Button size="sm" onClick={() => navigate(`/course/${course.id}`)}>Open Course</Button>
+                  <Button size="sm" variant="secondary" onClick={() => navigate(`/teacher/courses/${course.id}/edit`)}>
+                    Edit Course
+                  </Button>
+                </div>
+              </CardBody>
+            </Card>
+          ))}
+        </div>
+
+          {Boolean(sharedCourses.length) && (
+            <section className={styles.sharedSection}>
+              <div className={styles.sectionHeader}>
+                <div>
+                  <h2>{t('teacher.courses.sharedTitle', 'Community Courses')}</h2>
+                  <p className={styles.headerText}>{t('teacher.courses.sharedSubtitle', 'Courses created or added beyond your personal teaching catalog.')}</p>
+                </div>
+              </div>
+              <div className={styles.grid}>
+                {sharedCourses.slice(0, 6).map((course) => (
+                  <Card key={course.id} interactive>
+                    <CardBody>
+                      <div className={styles.courseCardHeader}>
+                        <h3 className={styles.courseTitle}>{course.title}</h3>
+                        <span className={`${styles.aiBadge} ${course.aiGenerated ? '' : styles.manualBadge}`}>
+                          {course.aiGenerated ? t('teacher.courses.aiGenerated', 'AI Generated') : t('teacher.courses.manual', 'Manual')}
+                        </span>
+                      </div>
+                      <p className={styles.courseDescription}>
+                        {course.description || t('teacher.courses.descriptionFallback', 'Use this space to describe what students will learn in this course.')}
+                      </p>
+                      <div className={styles.courseMetaRow}>
+                        <div className={styles.metaChip}>
+                          <Users size={14} />
+                          {t('teacher.courses.students', '{count} students', { count: course._count?.enrollments || 0 })}
+                        </div>
+                      </div>
+                      <div className={styles.courseActions}>
+                        <Button size="sm" onClick={() => navigate(`/course/${course.id}`)}>{t('teacher.courses.openCourse', 'Open Course')}</Button>
+                      </div>
+                    </CardBody>
+                  </Card>
+                ))}
+              </div>
+            </section>
+          )}
         </div>
       )}
     </div>

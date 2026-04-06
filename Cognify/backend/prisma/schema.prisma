@@ -30,6 +30,8 @@ model User {
   refreshTokens  RefreshToken[]
   auditLogs      AuditLog[] @relation("ActorAuditLogs")
   mediaAssets    MediaAsset[] @relation("UserMediaAssets")
+  quizAttempts   QuizAttempt[]
+  badges         UserBadge[]
   createdAt      DateTime     @default(now())
   updatedAt      DateTime     @updatedAt
 }
@@ -62,12 +64,15 @@ model Lesson {
   title     String
   content   String?
   order     Int      @default(0)
-  courseId   String
+  courseId  String
   course    Course   @relation(fields: [courseId], references: [id], onDelete: Cascade)
   grades    Grade[]
   progress  Progress[]
+  quizzes   Quiz[]
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+
+  @@index([courseId])
 }
 
 model Enrollment {
@@ -79,6 +84,7 @@ model Enrollment {
   enrolledAt DateTime @default(now())
 
   @@unique([studentId, courseId])
+  @@index([courseId])
 }
 
 model Grade {
@@ -93,6 +99,7 @@ model Grade {
   updatedAt DateTime @updatedAt
 
   @@unique([studentId, lessonId])
+  @@index([lessonId])
 }
 
 model Progress {
@@ -104,6 +111,7 @@ model Progress {
   completedAt DateTime @default(now())
 
   @@unique([studentId, lessonId])
+  @@index([lessonId])
 }
 
 model CourseAssessment {
@@ -149,6 +157,9 @@ model CourseMessage {
   course       Course   @relation(fields: [courseId], references: [id], onDelete: Cascade)
   user         User     @relation("UserMessages", fields: [userId], references: [id], onDelete: Cascade)
   moderator    User?    @relation("ModeratedMessages", fields: [moderatedBy], references: [id])
+
+  @@index([courseId])
+  @@index([userId])
 }
 
 model IntegrationSetting {
@@ -215,4 +226,63 @@ model SubtitleTrack {
   createdAt  DateTime @default(now())
   course     Course   @relation(fields: [courseId], references: [id], onDelete: Cascade)
   mediaAsset MediaAsset? @relation(fields: [mediaAssetId], references: [id], onDelete: SetNull)
+}
+
+model Quiz {
+  id        String   @id @default(uuid())
+  title     String
+  lessonId  String
+  lesson    Lesson   @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+  questions Question[]
+  attempts  QuizAttempt[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Question {
+  id        String   @id @default(uuid())
+  quizId    String
+  quiz      Quiz     @relation(fields: [quizId], references: [id], onDelete: Cascade)
+  content   String
+  type      String   @default("MULTIPLE_CHOICE")
+  answers   Answer[]
+}
+
+model Answer {
+  id         String   @id @default(uuid())
+  questionId String
+  question   Question @relation(fields: [questionId], references: [id], onDelete: Cascade)
+  text       String
+  isCorrect  Boolean  @default(false)
+}
+
+model QuizAttempt {
+  id        String   @id @default(uuid())
+  studentId String
+  student   User     @relation(fields: [studentId], references: [id])
+  quizId    String
+  quiz      Quiz     @relation(fields: [quizId], references: [id], onDelete: Cascade)
+  score     Float
+  createdAt DateTime @default(now())
+}
+
+model Badge {
+  id          String      @id @default(uuid())
+  name        String      @unique
+  description String
+  imageUrl    String?
+  xpReward    Int         @default(0)
+  users       UserBadge[]
+  createdAt   DateTime    @default(now())
+}
+
+model UserBadge {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  badgeId   String
+  badge     Badge    @relation(fields: [badgeId], references: [id], onDelete: Cascade)
+  earnedAt  DateTime @default(now())
+
+  @@unique([userId, badgeId])
 }

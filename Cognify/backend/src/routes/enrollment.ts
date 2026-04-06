@@ -4,7 +4,16 @@ import { AuthRequest, authMiddleware, requireSelfOrRole } from '../middleware/au
 
 const router = Router();
 
-// POST /api/enroll — enroll student in a course
+function parseWeakLessons(value: string | null | undefined): string[] {
+    if (!value) return [];
+    try {
+        const parsed = JSON.parse(value);
+        return Array.isArray(parsed) ? parsed.map((item) => String(item)).filter(Boolean) : [];
+    } catch {
+        return [];
+    }
+}
+
 router.post('/', authMiddleware, async (req: AuthRequest, res: Response) => {
     try {
         const studentId = req.user!.id;
@@ -40,7 +49,6 @@ router.post('/', authMiddleware, async (req: AuthRequest, res: Response) => {
     }
 });
 
-// GET /api/student/courses/:studentId — get student's enrolled courses (pagination)
 router.get('/courses/:studentId', authMiddleware, requireSelfOrRole('studentId', 'TEACHER', 'ADMIN'), async (req, res: Response) => {
     try {
         const studentId = req.params.studentId as string;
@@ -66,6 +74,24 @@ router.get('/courses/:studentId', authMiddleware, requireSelfOrRole('studentId',
             }),
         ]);
 
+        const lessonIds = enrollments.flatMap((item) => item.course.lessons.map((lesson) => lesson.id));
+        const courseIds = enrollments.map((item) => item.course.id);
+        const [progressRows, assessments] = await Promise.all([
+            lessonIds.length
+                ? prisma.progress.findMany({
+                      where: { studentId, lessonId: { in: lessonIds } },
+                      include: { lesson: { select: { courseId: true } } },
+                  })
+                : [],
+            courseIds.length ? prisma.courseAssessment.findMany({ where: { studentId, courseId: { in: courseIds } } }) : [],
+        ]);
+
+        const progressByCourse = new Map<string, number>();
+        for (const row of progressRows) {
+            progressByCourse.set(row.lesson.courseId, (progressByCourse.get(row.lesson.courseId) || 0) + 1);
+        }
+        const assessmentsByCourse = new Map(assessments.map((item) => [item.courseId, item]));
+
         res.json({
             pagination: {
                 page,
@@ -79,6 +105,11 @@ router.get('/courses/:studentId', authMiddleware, requireSelfOrRole('studentId',
                 description: e.course.description,
                 teacher_name: e.course.teacher.name || e.course.teacher.email,
                 lessons: e.course.lessons,
+                progressPercent: e.course.lessons.length
+                    ? Math.round(((progressByCourse.get(e.course.id) || 0) / e.course.lessons.length) * 100)
+                    : 0,
+                latestScore: assessmentsByCourse.get(e.course.id)?.score ?? null,
+                weakLessons: parseWeakLessons(assessmentsByCourse.get(e.course.id)?.weakLessons),
                 enrolledAt: e.enrolledAt,
             })),
         });
@@ -88,7 +119,127 @@ router.get('/courses/:studentId', authMiddleware, requireSelfOrRole('studentId',
     }
 });
 
-// DELETE /api/enroll/:courseId — unenroll
+router.get('/recommendations/:studentId', authMiddleware, requireSelfOrRole('studentId', 'TEACHER', 'ADMIN'), async (req, res: Response) => {
+    try {
+        const studentId = req.params.studentId as string;
+        const enrollments = await prisma.enrollment.findMany({
+            where: { studentId },
+            include: {
+                course: {
+                    include: {
+                        teacher: { select: { id: true, name: true, email: true } },
+                        lessons: { select: { id: true, title: true }, orderBy: { order: 'asc' } },
+                    },
+                },
+            },
+            orderBy: { enrolledAt: 'desc' },
+        });
+
+        const courseIds = enrollments.map((item) => item.courseId);
+        const lessonIds = enrollments.flatMap((item) => item.course.lessons.map((lesson) => lesson.id));
+
+        const [progressRows, grades, assessments, catalogCourses] = await Promise.all([
+            lessonIds.length
+                ? prisma.progress.findMany({
+                      where: { studentId, lessonId: { in: lessonIds } },
+                      include: { lesson: { select: { courseId: true } } },
+                  })
+                : [],
+            lessonIds.length
+                ? prisma.grade.findMany({
+                      where: { studentId, lessonId: { in: lessonIds } },
+                      include: { lesson: { select: { courseId: true } } },
+                  })
+                : [],
+            courseIds.length ? prisma.courseAssessment.findMany({ where: { studentId, courseId: { in: courseIds } } }) : [],
+            prisma.course.findMany({
+                where: courseIds.length ? { id: { notIn: courseIds } } : undefined,
+                include: {
+                    teacher: { select: { name: true, email: true } },
+                    lessons: { select: { id: true } },
+                },
+                orderBy: { createdAt: 'desc' },
+                take: 6,
+            }),
+        ]);
+
+        const progressByCourse = new Map<string, number>();
+        for (const row of progressRows) {
+            progressByCourse.set(row.lesson.courseId, (progressByCourse.get(row.lesson.courseId) || 0) + 1);
+        }
+
+        const gradesByCourse = new Map<string, { total: number; count: number }>();
+        for (const grade of grades) {
+            const current = gradesByCourse.get(grade.lesson.courseId) || { total: 0, count: 0 };
+            gradesByCourse.set(grade.lesson.courseId, { total: current.total + grade.score, count: current.count + 1 });
+        }
+
+        const assessmentsByCourse = new Map(assessments.map((item) => [item.courseId, item]));
+        const focusAreas = new Set<string>();
+
+        const actionPlan = enrollments
+            .map((item) => {
+                const totalLessons = item.course.lessons.length;
+                const completedLessons = progressByCourse.get(item.course.id) || 0;
+                const progressPercent = totalLessons ? Math.round((completedLessons / totalLessons) * 100) : 0;
+                const scoreAggregate = gradesByCourse.get(item.course.id);
+                const averageGrade = scoreAggregate?.count ? Math.round((scoreAggregate.total / scoreAggregate.count) * 100) / 100 : null;
+                const assessment = assessmentsByCourse.get(item.course.id);
+                const weakLessons = parseWeakLessons(assessment?.weakLessons);
+                weakLessons.forEach((lesson) => focusAreas.add(lesson));
+
+                let priority: 'high' | 'medium' | 'low' = 'low';
+                let message = 'Keep moving at the current pace.';
+
+                if ((averageGrade !== null && averageGrade < 50) || progressPercent < 40) {
+                    priority = 'high';
+                    message = weakLessons.length
+                        ? `Revisit ${weakLessons.slice(0, 2).join(', ')} and retry the adaptive practice.`
+                        : 'Complete the next lesson and ask AI Tutor to explain the hardest topic.';
+                } else if ((averageGrade !== null && averageGrade < 70) || progressPercent < 75) {
+                    priority = 'medium';
+                    message = weakLessons.length
+                        ? `Focus on ${weakLessons[0]} before moving to the next assessment.`
+                        : 'Complete one more lesson and do a short self-check quiz.';
+                }
+
+                return {
+                    courseId: item.course.id,
+                    courseTitle: item.course.title,
+                    progressPercent,
+                    averageGrade,
+                    priority,
+                    message,
+                };
+            })
+            .sort((a, b) => {
+                const order = { high: 3, medium: 2, low: 1 };
+                return order[b.priority] - order[a.priority];
+            });
+
+        const recommendedCourses = catalogCourses.slice(0, 3).map((course) => ({
+            id: course.id,
+            title: course.title,
+            description: course.description,
+            teacherName: course.teacher.name || course.teacher.email,
+            lessonCount: course.lessons.length,
+            reason:
+                focusAreas.size > 0
+                    ? `Suggested to strengthen ${Array.from(focusAreas).slice(0, 2).join(' and ')}.`
+                    : 'Suggested as the next course to expand your learning path.',
+        }));
+
+        res.json({
+            focusAreas: Array.from(focusAreas).slice(0, 5),
+            actionPlan: actionPlan.slice(0, 5),
+            recommendedCourses,
+        });
+    } catch (error) {
+        console.error('Student recommendations error:', error);
+        res.status(500).json({ error: 'Internal server error.' });
+    }
+});
+
 router.delete('/:courseId', authMiddleware, async (req: AuthRequest, res: Response) => {
     try {
         const studentId = req.user!.id;

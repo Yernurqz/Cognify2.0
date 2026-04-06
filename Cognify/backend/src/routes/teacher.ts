@@ -119,15 +119,57 @@ router.get('/overview/:teacherId', authMiddleware, requireRole('TEACHER', 'ADMIN
             .filter((item) => item.risk)
             .sort((a, b) => b.riskScore - a.riskScore);
 
+        const averageScore =
+            grades.length > 0 ? Math.round((grades.reduce((sum, grade) => sum + grade.score, 0) / grades.length) * 100) / 100 : null;
+        const completionRate =
+            enrollments.length > 0
+                ? Math.round(
+                      (enrollments.reduce((sum, enrollment) => {
+                          const course = teacherCourses.find((item) => item.id === enrollment.courseId);
+                          const totalLessons = course?.lessons.length || 0;
+                          const completedLessons = progressCountByStudentCourse.get(`${enrollment.studentId}:${enrollment.courseId}`) || 0;
+                          return sum + (totalLessons ? completedLessons / totalLessons : 0);
+                      }, 0) /
+                          enrollments.length) *
+                          100
+                  )
+                : 0;
+
+        const weakTopicMap = new Map<string, number>();
+        for (const assessment of courseIds.length
+            ? await prisma.courseAssessment.findMany({ where: { courseId: { in: courseIds } } })
+            : []) {
+            if (!assessment.weakLessons) continue;
+            try {
+                const parsed = JSON.parse(assessment.weakLessons);
+                if (Array.isArray(parsed)) {
+                    for (const lesson of parsed) {
+                        const key = String(lesson);
+                        weakTopicMap.set(key, (weakTopicMap.get(key) || 0) + 1);
+                    }
+                }
+            } catch {
+                // ignore malformed assessment payload
+            }
+        }
+        const weakTopics = Array.from(weakTopicMap.entries())
+            .sort((a, b) => b[1] - a[1])
+            .slice(0, 5)
+            .map(([lessonTitle, count]) => ({ lessonTitle, count }));
+
         const totalStudents = new Set(enrollments.map((item) => item.studentId)).size;
         const totalEnrollments = enrollments.length;
 
         res.json({
             totalCourses: teacherCourses.length,
+            aiCourseCount: teacherCourses.filter((course) => course.aiGenerated).length,
             totalStudents,
             totalEnrollments,
+            averageScore,
+            completionRate,
             riskCount: riskStudents.length,
             riskStudents,
+            weakTopics,
         });
     } catch (error) {
         console.error('Teacher overview error:', error);

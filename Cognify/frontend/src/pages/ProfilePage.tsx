@@ -145,10 +145,12 @@ export const ProfilePage = () => {
   };
 
   return (
-    <div style={{ display: 'grid', gap: '1rem' }}>
-      <Card>
+    <div className="glass-panel" style={{ display: 'grid', gap: '2rem', padding: '2rem' }}>
+      <Card interactive>
         <CardBody>
-          <h1 className="text-gradient" style={{ fontSize: '2rem', marginBottom: '0.9rem' }}>Profile</h1>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <h1 className="text-gradient" style={{ fontSize: '2rem', marginBottom: '0.9rem' }}>Profile</h1>
+          </div>
           {avatarUrl && (
             <div style={{ marginBottom: '0.9rem' }}>
               <img
@@ -188,22 +190,25 @@ export const ProfilePage = () => {
                 }}
               />
             </label>
-            <div style={{ display: 'flex', gap: '0.6rem', flexWrap: 'wrap', alignItems: 'center' }}>
+            <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap', alignItems: 'center', marginTop: '1rem' }}>
               <Button type="submit" icon={<Save size={16} />} disabled={saving}>
                 {saving ? 'Saving...' : 'Save Profile'}
               </Button>
-              <span style={{ color: 'var(--text-secondary)' }}>XP: {profile?.xp ?? 0}</span>
-              <span style={{ color: 'var(--text-secondary)' }}>Streak: {profile?.streakDays ?? 0} days</span>
+              <div className="glass-panel" style={{ padding: '0.5rem 1rem', display: 'flex', gap: '1rem', alignItems: 'center', borderRadius: '12px' }}>
+                <span style={{ color: 'var(--text-secondary)', fontWeight: 600 }}>XP: <span style={{ color: 'var(--primary-light)' }}>{profile?.xp ?? 0}</span></span>
+                <div style={{ width: '1px', height: '14px', background: 'var(--border-glass)' }}></div>
+                <span style={{ color: 'var(--text-secondary)', fontWeight: 600 }}>Streak: <span style={{ color: 'var(--secondary)' }}>{profile?.streakDays ?? 0}</span> days 🔥</span>
+              </div>
             </div>
           </form>
         </CardBody>
       </Card>
 
-      <Card>
+      <Card interactive>
         <CardBody>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' }}>
-            <h3 style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
-              <Bell size={16} /> Notifications
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem', borderBottom: '1px solid var(--border-glass)', paddingBottom: '0.5rem' }}>
+            <h3 style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--text-primary)' }}>
+              <Bell size={18} className="text-primary" /> Notifications
             </h3>
             <Button size="sm" variant="secondary" onClick={markAllRead}>Mark all read</Button>
           </div>
@@ -221,19 +226,20 @@ export const ProfilePage = () => {
       </Card>
 
       {(profile?.role === 'TEACHER' || profile?.role === 'ADMIN') && (
-        <Card>
+        <Card interactive style={{ marginTop: '1rem' }}>
           <CardBody>
-            <h3 style={{ marginBottom: '0.75rem' }}>Integrations</h3>
-            <p style={{ color: 'var(--text-secondary)', marginBottom: '0.75rem' }}>
+            <h3 style={{ marginBottom: '0.75rem', fontSize: '1.4rem' }}>Integrations</h3>
+            <p style={{ color: 'var(--text-secondary)', marginBottom: '1.5rem' }}>
               Google Classroom, Moodle, Telegram, Email via webhook endpoints.
             </p>
-            <div style={{ display: 'grid', gap: '0.75rem' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '1rem' }}>
               {providers.map((provider) => {
                 const item = integrationForm[provider] || { webhook: '', enabled: false };
                 return (
-                  <div key={provider} style={{ border: '1px solid var(--border-glass)', borderRadius: 10, padding: '0.7rem' }}>
-                    <div style={{ marginBottom: '0.4rem', fontWeight: 600 }}>{provider}</div>
+                  <div key={provider} className="glass-panel" style={{ padding: '1rem' }}>
+                    <div style={{ marginBottom: '0.8rem', fontWeight: 600, textTransform: 'capitalize' }}>{provider.replace('_', ' ')}</div>
                     <input
+                      className="glass-input"
                       value={item.webhook}
                       onChange={(e) =>
                         setIntegrationForm((prev) => ({
@@ -242,15 +248,7 @@ export const ProfilePage = () => {
                         }))
                       }
                       placeholder="Webhook URL"
-                      style={{
-                        width: '100%',
-                        background: 'var(--bg-surface)',
-                        border: '1px solid var(--border-glass)',
-                        borderRadius: 8,
-                        color: 'var(--text-primary)',
-                        padding: '0.5rem',
-                        marginBottom: '0.5rem',
-                      }}
+                      style={{ width: '100%', padding: '0.65rem 1rem', marginBottom: '0.8rem' }}
                     />
                     <label style={{ display: 'flex', gap: '0.45rem', alignItems: 'center', marginBottom: '0.5rem' }}>
                       <input

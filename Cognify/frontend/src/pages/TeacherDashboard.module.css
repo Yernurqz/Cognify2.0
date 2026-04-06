@@ -1,17 +1,101 @@
-/* Risk Group Styles */
 .riskCardContainer {
-  border: 1px solid rgba(244, 63, 94, 0.2);
-  background: rgba(244, 63, 94, 0.02) !important;
+  background: rgba(255, 255, 255, 0.02) !important;
+  display: flex;
+  flex-direction: column;
+}
+
+.riskHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1.25rem;
 }
 
 .riskBadge {
   background: rgba(244, 63, 94, 0.1);
   color: #f43f5e;
-  padding: 0.25rem 0.75rem;
-  border-radius: 999px;
-  font-size: 0.75rem;
-  font-weight: 700;
+  padding: 0.2rem 0.6rem;
+  border-radius: 6px;
+  font-size: 0.65rem;
+  font-weight: 800;
   text-transform: uppercase;
+  letter-spacing: 0.05em;
+  border: 1px solid rgba(244, 63, 94, 0.2);
+}
+
+.riskList {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.riskItemCard {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.75rem;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid var(--border-glass);
+  border-radius: 12px;
+  transition: all 0.2s ease;
+}
+
+.riskItemCard:hover {
+  background: rgba(255, 255, 255, 0.05);
+  transform: translateX(4px);
+  border-color: rgba(244, 63, 94, 0.3);
+}
+
+.riskUser {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.riskAvatar {
+  width: 36px;
+  height: 36px;
+  background: linear-gradient(135deg, #f43f5e, #fb7185);
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  font-weight: 700;
+  font-size: 0.8rem;
+  box-shadow: 0 4px 12px rgba(244, 63, 94, 0.3);
+}
+
+.riskInfo {
+  display: flex;
+  flex-direction: column;
+}
+
+.riskName {
+  font-weight: 600;
+  font-size: 0.9rem;
+  color: var(--text-primary);
+}
+
+.riskReason {
+  font-size: 0.7rem;
+  color: var(--text-secondary);
+}
+
+.riskScoreBadge {
+  background: rgba(244, 63, 94, 0.15);
+  color: #f43f5e;
+  padding: 0.25rem 0.5rem;
+  border-radius: 6px;
+  font-weight: 700;
+  font-size: 0.8rem;
+}
+
+.cardFooterActions {
+  margin-top: auto;
+  padding-top: 1.5rem;
+  display: flex;
+  justify-content: flex-start;
 }
 
 .riskItem {
@@ -114,13 +198,40 @@
 
 .statsGrid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
   gap: 1.5rem;
   margin-top: 1rem;
+  margin-bottom: 2rem;
 }
 
-.statCardFixed {
+.statCardGlow {
+  position: relative;
+  overflow: hidden;
   border: 1px solid var(--border-glass);
+  transition: all 0.3s ease;
+}
+
+.statCardGlow::before {
+  content: '';
+  position: absolute;
+  top: -50%;
+  left: -50%;
+  width: 200%;
+  height: 200%;
+  background: radial-gradient(circle, var(--glow-color, rgba(99, 102, 241, 0.1)) 0%, transparent 70%);
+  opacity: 0;
+  transition: opacity 0.3s ease;
+  pointer-events: none;
+}
+
+.statCardGlow:hover {
+  transform: translateY(-5px);
+  border-color: var(--glow-stroke, var(--primary));
+  box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+}
+
+.statCardGlow:hover::before {
+  opacity: 1;
 }
 
 .statLabel {
@@ -149,66 +260,59 @@
   gap: 0.25rem;
 }
 
-/* Productivity Chart */
-.chartContainer {
-  display: flex;
-  align-items: flex-end;
-  justify-content: space-between;
-  height: 200px;
-  padding: 1rem 0;
-  gap: 1rem;
+/* New Analytics Tier */
+.analyticsTier {
+  display: grid;
+  grid-template-columns: 2fr 1fr;
+  gap: 1.5rem;
+  margin-bottom: 2rem;
 }
 
-.chartBarWrapper {
-  flex: 1;
+.chartContainer {
+  background: var(--card-bg);
+  border-radius: 20px;
+  border: 1px solid var(--border-glass);
+  padding: 1.5rem;
+  height: 380px;
+}
+
+.quickHub {
   display: flex;
   flex-direction: column;
-  align-items: center;
-  gap: 0.75rem;
+  gap: 1.5rem;
 }
 
-.chartBar {
-  width: 100%;
-  max-width: 40px;
-  background: linear-gradient(to top, var(--primary), var(--secondary));
-  border-radius: 8px 8px 4px 4px;
-  position: relative;
-  transition: all 1.2s cubic-bezier(0.16, 1, 0.3, 1);
-  box-shadow: 0 0 15px rgba(139, 92, 246, 0.15);
-  cursor: pointer;
+.curriculumList {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  margin-top: 1rem;
 }
 
-.chartBar:hover {
-  filter: brightness(1.2);
-  box-shadow: 0 0 25px rgba(139, 92, 246, 0.3);
+.curriculumItem {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
 }
 
-.chartBar:hover .barTooltip {
-  opacity: 1;
-  transform: translateX(-50%) translateY(-10px);
+.curriculumMeta {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.8rem;
+  color: var(--text-secondary);
 }
 
-.barTooltip {
-  position: absolute;
-  top: -30px;
-  left: 50%;
-  transform: translateX(-50%) translateY(0);
-  background: var(--bg-surface);
-  color: white;
-  padding: 2px 8px;
-  border-radius: 4px;
-  font-size: 0.75rem;
-  opacity: 0;
-  transition: all 0.2s ease;
-  white-space: nowrap;
-  pointer-events: none;
-  border: 1px solid var(--border-glass);
+.progressBar {
+  height: 6px;
+  background: rgba(255,255,255,0.05);
+  border-radius: 99px;
+  overflow: hidden;
 }
 
-.chartDay {
-  font-size: 0.75rem;
-  color: var(--text-muted);
-  font-weight: 500;
+.progressFill {
+  height: 100%;
+  background: var(--primary);
+  border-radius: 99px;
 }
 
 .courseImage {
@@ -234,4 +338,205 @@
   font-weight: 600;
   border: 1px solid rgba(168, 85, 247, 0.3);
   margin-top: 1rem;
+}
+
+.manualBadge {
+  background: rgba(148, 163, 184, 0.12);
+  color: var(--text-secondary);
+  border-color: rgba(148, 163, 184, 0.3);
+}
+
+.sectionHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+.headerText {
+  color: var(--text-secondary);
+  font-size: 0.95rem;
+  margin: 0;
+}
+
+.searchToolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+.searchInputWrapper {
+  flex: 1;
+  min-width: 220px;
+  position: relative;
+}
+
+.searchInputWrapper svg {
+  position: absolute;
+  top: 50%;
+  left: 1rem;
+  transform: translateY(-50%);
+  color: var(--text-secondary);
+}
+
+.searchField {
+  width: 100%;
+  padding: 0.9rem 1rem 0.9rem 3rem;
+  border-radius: 16px;
+  border: 1px solid var(--border-glass);
+  background: var(--bg-surface);
+  color: var(--text-primary);
+  outline: none;
+  transition: border-color var(--transition-normal);
+}
+
+.searchField:focus {
+  border-color: var(--primary);
+}
+
+.filterChips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+
+.chipButton {
+  padding: 0.75rem 1rem;
+  border: 1px solid var(--border-glass);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--text-secondary);
+  font-weight: 600;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.chipButton:hover,
+.activeChip {
+  background: rgba(59, 130, 246, 0.12);
+  border-color: rgba(59, 130, 246, 0.35);
+  color: var(--primary);
+}
+
+.skeletonFooter {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 1rem;
+}
+
+.emptyCard {
+  border: 1px dashed var(--border-glass);
+  background: rgba(255, 255, 255, 0.02) !important;
+}
+
+.emptyStateCard {
+  text-align: center;
+  padding: 3rem;
+}
+
+.emptyIcon {
+  margin-bottom: 1rem;
+  color: var(--text-muted);
+}
+
+.emptyMessage {
+  color: var(--text-secondary);
+  font-size: 1rem;
+}
+
+.sharedSection {
+  margin-top: 2.25rem;
+}
+
+.courseCardHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 1rem;
+  margin-bottom: 0.9rem;
+}
+
+.courseTitle {
+  font-size: 1.1rem;
+  font-weight: 700;
+  margin: 0;
+  color: var(--text-primary);
+}
+
+.courseDescription {
+  color: var(--text-secondary);
+  line-height: 1.7;
+  margin-bottom: 1rem;
+}
+
+.courseMetaRow {
+  display: flex;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+  margin-bottom: 1.25rem;
+}
+
+.metaChip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  color: var(--text-secondary);
+  font-size: 0.875rem;
+}
+
+.courseActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+
+.gridSection {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(360px, 1fr));
+  gap: 1.5rem;
+  margin-top: 1.5rem;
+  align-items: stretch;
+}
+
+.sharedSection {
+  margin-top: 2.5rem;
+  padding-top: 2rem;
+  border-top: 1px solid var(--border-glass);
+}
+
+@media print {
+  /* Hides everything irrelevant to the report */
+  .sectionHeader button,
+  .riskCardContainer button,
+  nav,
+  .sidebar,
+  .heroActions,
+  ::-webkit-scrollbar {
+    display: none !important;
+  }
+
+  body {
+    background: white;
+    color: black;
+  }
+  
+  .chartContainer {
+    break-inside: avoid;
+    border: none !important;
+  }
+
+  .statCardFixed {
+    border: 1px solid #ddd !important;
+    background: white !important;
+    break-inside: avoid;
+  }
+
+  .statLabel, .statValue, .statChange, strong, h1, h2, h3 {
+    color: black !important;
+  }
 }

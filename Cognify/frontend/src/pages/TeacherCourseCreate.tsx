@@ -1,9 +1,11 @@
 import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 import { Sparkles, Loader2, CheckCircle2, Plus, Trash2, BookOpen, PenTool } from 'lucide-react';
 import { Card, CardBody } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
 import { Input } from '../components/ui/Input';
+import { useToastContext } from '../components/ToastProvider';
+import { authFetch } from '../lib/api';
 import styles from './TeacherCourseCreate.module.css';
 
 interface User {
@@ -20,7 +22,10 @@ interface NewLesson {
 
 export const TeacherCourseCreate = () => {
   const navigate = useNavigate();
+  const { id } = useParams();
+  const isEditMode = Boolean(id);
   const [user, setUser] = useState<User | null>(null);
+  const { showToast } = useToastContext();
   
   // Tabs: 'ai' or 'manual'
   const [creationMode, setCreationMode] = useState<'ai' | 'manual'>('ai');
@@ -38,6 +43,10 @@ export const TeacherCourseCreate = () => {
   // Manual Creator state
   const [manualTitle, setManualTitle] = useState('');
   const [manualDescription, setManualDescription] = useState('');
+  const [manualLanguage, setManualLanguage] = useState<'en' | 'ru' | 'kk'>('en');
+  const [manualAudience, setManualAudience] = useState('');
+  const [manualGoals, setManualGoals] = useState('');
+  const [manualWeeks, setManualWeeks] = useState(4);
   const [manualLessons, setManualLessons] = useState<NewLesson[]>([{ title: '', content: '' }]);
   const [isSaving, setIsSaving] = useState(false);
 
@@ -46,18 +55,52 @@ export const TeacherCourseCreate = () => {
   const [generatedCourseId, setGeneratedCourseId] = useState<string | null>(null);
 
   useEffect(() => {
-    const controller = new AbortController();
     const storedUser = localStorage.getItem('user');
     if (!storedUser) {
       navigate('/auth');
       return;
     }
     setUser(JSON.parse(storedUser));
-    return () => controller.abort();
   }, [navigate]);
 
+  useEffect(() => {
+    if (!id) return;
+    const loadCourse = async () => {
+      const res = await authFetch(`/api/courses/${id}`);
+      if (!res.ok) return;
+      const data = await res.json();
+      const course = data.course;
+      setCreationMode(course.aiGenerated ? 'ai' : 'manual');
+      setManualTitle(course.title || '');
+      setManualDescription(course.description || '');
+      setManualLanguage((course.language || 'en') as 'en' | 'ru' | 'kk');
+      setManualAudience(course.targetAudience || '');
+      setManualWeeks(course.estimatedWeeks || 4);
+      try {
+        const goals = course.learningGoals ? JSON.parse(course.learningGoals) : [];
+        setManualGoals(Array.isArray(goals) ? goals.join('\n') : '');
+      } catch {
+        setManualGoals('');
+      }
+      setManualLessons(
+        Array.isArray(course.lessons) && course.lessons.length
+          ? course.lessons.map((lesson: NewLesson) => ({ title: lesson.title, content: lesson.content || '' }))
+          : [{ title: '', content: '' }]
+      );
+      setTopic(course.title || '');
+      setTargetAudience(course.targetAudience || '');
+      setCourseGoal(course.description || '');
+      setDurationWeeks(course.estimatedWeeks || 4);
+      setLanguage((course.language || 'en') as 'en' | 'ru' | 'kk');
+    };
+    loadCourse().catch((error) => console.error(error));
+  }, [id]);
+
   const handleGenerate = async () => {
-    if (!topic || !user) return;
+    if (!topic || !user) {
+      showToast({ description: 'Enter a course topic to generate a structure.', variant: 'warning' });
+      return;
+    }
     setIsGenerating(true);
     const controller = new AbortController();
     
@@ -73,16 +116,22 @@ export const TeacherCourseCreate = () => {
         signal: controller.signal
       });
 
-      if (response.ok) {
-        const data = await response.json();
-        if (data.course && data.course.id) {
-          setGeneratedCourseId(data.course.id);
-        }
-        setIsDone(true);
+      if (!response.ok) {
+        const errorText = await response.text();
+        showToast({ description: `AI generation failed: ${errorText || 'Please try again.'}`, variant: 'error' });
+        return;
       }
+
+      const data = await response.json();
+      if (data.course && data.course.id) {
+        setGeneratedCourseId(data.course.id);
+      }
+      showToast({ description: 'Course structure generated successfully.', variant: 'success' });
+      setIsDone(true);
     } catch (err) {
       if (err instanceof Error && err.name !== 'AbortError') {
         console.error(err);
+        showToast({ description: 'AI generation failed. Please try again.', variant: 'error' });
       }
     } finally {
       setIsGenerating(false);
@@ -90,33 +139,44 @@ export const TeacherCourseCreate = () => {
   };
 
   const handleManualSave = async () => {
-    if (!manualTitle || !user) return;
+    if (!manualTitle || !user) {
+      showToast({ description: 'Please provide a title to save the course.', variant: 'warning' });
+      return;
+    }
     setIsSaving(true);
     
     try {
-      const token = localStorage.getItem('token');
-      const response = await fetch('/api/courses', {
-        method: 'POST',
+      const response = await authFetch(isEditMode ? `/api/courses/${id}` : '/api/courses', {
+        method: isEditMode ? 'PUT' : 'POST',
         headers: { 
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
+          'Content-Type': 'application/json'
         },
         body: JSON.stringify({
           title: manualTitle,
           description: manualDescription,
+          language: manualLanguage,
+          targetAudience: manualAudience,
+          estimatedWeeks: manualWeeks,
+          learningGoals: manualGoals.split('\n').map((item) => item.trim()).filter(Boolean),
           lessons: manualLessons.filter(l => l.title.trim() !== '')
         })
       });
 
-      if (response.ok) {
-        const data = await response.json();
-        if (data.course && data.course.id) {
-          setGeneratedCourseId(data.course.id);
-        }
-        setIsDone(true);
+      if (!response.ok) {
+        const errorText = await response.text();
+        showToast({ description: `Save failed: ${errorText || 'Please try again.'}`, variant: 'error' });
+        return;
       }
+
+      const data = await response.json();
+      if (data.course && data.course.id) {
+        setGeneratedCourseId(data.course.id);
+      }
+      showToast({ description: isEditMode ? 'Course updated successfully.' : 'Course created successfully.', variant: 'success' });
+      setIsDone(true);
     } catch (err) {
       console.error(err);
+      showToast({ description: 'Unable to save the course. Please try again.', variant: 'error' });
     } finally {
       setIsSaving(false);
     }
@@ -142,16 +202,20 @@ export const TeacherCourseCreate = () => {
   if (isDone) {
     return (
       <div className={styles.container}>
-        <Card className="animate-fade-in text-center p-8 border-success/30" style={{ borderColor: 'var(--success)' }}>
-          <CardBody style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-            <CheckCircle2 size={64} style={{ color: 'var(--success)', marginBottom: '1rem' }} />
-            <h2 className="text-gradient" style={{ fontSize: '2rem', marginBottom: '1rem' }}>Course Created!</h2>
-            <p style={{ color: 'var(--text-secondary)', marginBottom: '2rem' }}>
+        <Card className={styles.successCard}>
+          <CardBody className={styles.successContent}>
+            <CheckCircle2 size={64} className={styles.successIcon} />
+            <h2 className={styles.successTitle}>{isEditMode ? 'Course Updated!' : 'Course Created!'}</h2>
+            <p className={styles.successText}>
               Your course "{creationMode === 'ai' ? topic : manualTitle}" is now live and ready for students.
             </p>
-            <div style={{ display: 'flex', gap: '1rem' }}>
-              <Button onClick={() => generatedCourseId ? navigate(`/course/${generatedCourseId}`) : navigate('/teacher/dashboard')}>View Course</Button>
-              <Button variant="secondary" onClick={() => { setIsDone(false); setTopic(''); setManualTitle(''); setManualLessons([{ title: '', content: '' }]); }}>Create Another</Button>
+            <div className={styles.successActions}>
+              <Button onClick={() => generatedCourseId ? navigate(`/course/${generatedCourseId}`) : navigate('/teacher/dashboard')}>
+                View Course
+              </Button>
+              <Button variant="secondary" onClick={() => { setIsDone(false); setTopic(''); setManualTitle(''); setManualLessons([{ title: '', content: '' }]); }}>
+                Create Another
+              </Button>
             </div>
           </CardBody>
         </Card>
@@ -164,7 +228,7 @@ export const TeacherCourseCreate = () => {
       <header className={styles.pageHeader}>
         <div>
           <h1 className="text-gradient" style={{ fontSize: '2.5rem', marginBottom: '0.5rem' }}>Create New Course</h1>
-          <p style={{ color: 'var(--text-secondary)' }}>Choose a creation method below to get started.</p>
+          <p className={styles.headerText}>{isEditMode ? 'Update your existing course and lessons.' : 'Choose a creation method below to get started.'}</p>
         </div>
       </header>
 
@@ -193,7 +257,8 @@ export const TeacherCourseCreate = () => {
             </div>
             
             <textarea 
-              className={styles.textarea}
+              className="glass-input textarea-expand"
+              style={{ width: '100%', minHeight: '120px', padding: '1.25rem', marginBottom: '1.5rem', borderRadius: '16px' }}
               placeholder="E.g. Advanced Artificial Intelligence in Modern Education..."
               value={topic}
               onChange={(e) => setTopic(e.target.value)}
@@ -327,6 +392,45 @@ export const TeacherCourseCreate = () => {
                   onChange={(e) => setManualDescription(e.target.value)}
                 />
               </div>
+              <div className={styles.inputGroup}>
+                <label className={styles.label}>Language</label>
+                <select
+                  value={manualLanguage}
+                  onChange={(e) => setManualLanguage(e.target.value as 'en' | 'ru' | 'kk')}
+                  className="glass-input"
+                  style={{ minHeight: '52px', width: '100%', padding: '0 1rem' }}
+                >
+                  <option value="en">English</option>
+                  <option value="ru">Russian</option>
+                  <option value="kk">Kazakh</option>
+                </select>
+              </div>
+              <div className={styles.inputGroup}>
+                <Input
+                  label="Target Audience"
+                  placeholder="E.g. drone operators, agronomy students"
+                  value={manualAudience}
+                  onChange={(e) => setManualAudience(e.target.value)}
+                />
+              </div>
+              <div className={styles.inputGroup}>
+                <Input
+                  label="Estimated Weeks"
+                  type="number"
+                  value={String(manualWeeks)}
+                  onChange={(e) => setManualWeeks(Number(e.target.value) || 4)}
+                />
+              </div>
+              <div className={styles.inputGroup}>
+                <label className={styles.label}>Learning Goals</label>
+                <textarea
+                  className="glass-input"
+                  style={{ height: '120px', minHeight: '120px', width: '100%', padding: '1rem' }}
+                  placeholder="One goal per line"
+                  value={manualGoals}
+                  onChange={(e) => setManualGoals(e.target.value)}
+                />
+              </div>
 
               <div className={styles.lessonsSection}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: '1.5rem' }}>
@@ -370,7 +474,7 @@ export const TeacherCourseCreate = () => {
                   disabled={isSaving || !manualTitle.trim()}
                   icon={isSaving ? <Loader2 className="animate-spin" /> : <BookOpen size={18} />}
                 >
-                  {isSaving ? 'Creating Course...' : 'Create Course Now'}
+                  {isSaving ? (isEditMode ? 'Updating Course...' : 'Creating Course...') : (isEditMode ? 'Update Course' : 'Create Course Now')}
                 </Button>
               </div>
             </div>

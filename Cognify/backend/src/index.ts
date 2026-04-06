@@ -28,6 +28,9 @@ import integrationsRoutes from './routes/integrations';
 import { apiRateLimit, auditLogMiddleware, authRateLimit } from './middleware/security';
 import mediaRoutes from './routes/media';
 import subtitlesRoutes from './routes/subtitles';
+import quizzesRoutes from './routes/quizzes';
+import gamificationRoutes from './routes/gamification';
+import webhooksRoutes from './routes/webhooks';
 
 const app = express();
 const port = process.env.PORT || 3000;
@@ -56,6 +59,9 @@ app.use('/api/chat', chatRoutes);
 app.use('/api/integrations', integrationsRoutes);
 app.use('/api/media', mediaRoutes);
 app.use('/api/subtitles', subtitlesRoutes);
+app.use('/api/quizzes', quizzesRoutes);
+app.use('/api/gamification', gamificationRoutes);
+app.use('/api/webhooks', webhooksRoutes);
 // Enrollment routes already mounted above as /api/enroll and /api/student
 
 // Health check

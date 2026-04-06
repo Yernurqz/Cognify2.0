@@ -3,11 +3,14 @@ import ReactDOM from 'react-dom/client';
 import App from './App.tsx';
 import './index.css';
 import { PreferencesProvider } from './context/PreferencesContext.tsx';
+import { ToastProvider } from './components/ToastProvider.tsx';
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
     <PreferencesProvider>
-      <App />
+      <ToastProvider>
+        <App />
+      </ToastProvider>
     </PreferencesProvider>
   </React.StrictMode>,
 )

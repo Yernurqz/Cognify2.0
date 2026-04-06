@@ -1,9 +1,104 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState, memo } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { ArrowLeft, Award, BookOpen, CheckCircle, Loader2 } from 'lucide-react';
 import { Button } from '../components/ui/Button';
+import { Skeleton } from '../components/Skeleton';
+import { VideoPlayer } from '../components/ui/VideoPlayer';
+import { QuizTaker } from '../components/QuizTaker';
+import { QuizCreator } from '../components/QuizCreator';
 import { authFetch } from '../lib/api';
 import styles from './CourseView.module.css';
+
+const AITutorSection = memo(({ draft, onDraftChange, onAsk, loading, reply }: any) => {
+  return (
+    <div style={{ marginTop: '1rem', borderTop: '1px solid var(--border-glass)', paddingTop: '1rem' }}>
+      <h3 style={{ marginBottom: '0.65rem' }}>AI Tutor</h3>
+      <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+        <Button size="sm" variant="secondary" onClick={() => onAsk('simplify')} disabled={loading}>
+          Explain simpler
+        </Button>
+        <Button size="sm" variant="secondary" onClick={() => onAsk('example')} disabled={loading}>
+          Give example
+        </Button>
+        <Button size="sm" variant="secondary" onClick={() => onAsk('check_answer')} disabled={loading}>
+          Check my answer
+        </Button>
+      </div>
+      <textarea
+        value={draft}
+        onChange={(e) => onDraftChange(e.target.value)}
+        placeholder="Write your answer draft for AI feedback..."
+        style={{
+          width: '100%',
+          minHeight: 88,
+          marginTop: '0.6rem',
+          background: 'var(--bg-surface)',
+          border: '1px solid var(--border-glass)',
+          borderRadius: 10,
+          color: 'var(--text-primary)',
+          padding: '0.6rem',
+        }}
+      />
+      {reply && <div style={{ marginTop: '0.55rem', color: 'var(--text-secondary)' }}>{reply}</div>}
+    </div>
+  );
+});
+
+const CourseChat = memo(({ messages, text, tokenRole, onTextChange, onSend, onPin, onHide }: any) => {
+  const isPrivileged = tokenRole?.toUpperCase() === 'TEACHER' || tokenRole?.toUpperCase() === 'ADMIN';
+  
+  return (
+    <div style={{ marginTop: '1.5rem', borderTop: '1px solid var(--border-glass)', paddingTop: '1rem' }}>
+      <h3 style={{ marginBottom: '0.65rem' }}>Course Chat</h3>
+      <div style={{ display: 'grid', gap: '0.5rem', maxHeight: 220, overflow: 'auto', marginBottom: '0.7rem' }}>
+        {messages.map((message: any) => (
+          <div
+            key={message.id}
+            style={{
+              padding: '0.5rem 0.65rem',
+              borderRadius: 10,
+              background: 'color-mix(in srgb, var(--bg-surface) 85%, transparent)',
+              border: '1px solid var(--border-glass)',
+            }}
+          >
+            <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
+              {message.user?.nickname || message.user?.name || 'User'}{message.pinned ? ' - pinned' : ''}
+            </div>
+            <div>{message.content}</div>
+            {isPrivileged && (
+              <div style={{ display: 'flex', gap: '0.4rem', marginTop: '0.4rem' }}>
+                <Button size="sm" variant="secondary" onClick={() => onPin(message.id)}>
+                  {message.pinned ? 'Unpin' : 'Pin'}
+                </Button>
+                <Button size="sm" variant="secondary" onClick={() => onHide(message.id)}>
+                  Hide
+                </Button>
+              </div>
+            )}
+          </div>
+        ))}
+      </div>
+      <div style={{ display: 'flex', gap: '0.5rem' }}>
+        <input
+          value={text}
+          onChange={(e) => onTextChange(e.target.value)}
+          placeholder="Ask a question about this course..."
+          style={{
+            flex: 1,
+            background: 'var(--bg-surface)',
+            border: '1px solid var(--border-glass)',
+            borderRadius: 10,
+            color: 'var(--text-primary)',
+            padding: '0.55rem 0.65rem',
+          }}
+        />
+        <Button onClick={onSend} size="sm">
+          Send
+        </Button>
+      </div>
+    </div>
+  );
+});
 
 interface Lesson {
   id: string;
@@ -40,6 +135,7 @@ interface MediaAsset {
   id: string;
   kind: string;
   publicUrl: string;
+  originalName?: string;
   createdAt: string;
 }
 
@@ -56,6 +152,27 @@ interface AdaptiveQuestion {
   options: string[];
   expected: string;
   weakLessons: string[];
+}
+
+interface AssessmentPack {
+  title: string;
+  summary: string;
+  quizQuestions: Array<{
+    id: string;
+    prompt: string;
+    options: string[];
+    answer: string;
+    explanation?: string;
+  }>;
+  assignment: {
+    title: string;
+    brief: string;
+    deliverables: string[];
+  };
+  rubric: Array<{
+    criterion: string;
+    weight: number;
+  }>;
 }
 
 export const CourseView = () => {
@@ -94,8 +211,12 @@ export const CourseView = () => {
   const [subtitleTracks, setSubtitleTracks] = useState<SubtitleTrack[]>([]);
   const [selectedTrackId, setSelectedTrackId] = useState<string>('');
   const [videoFile, setVideoFile] = useState<File | null>(null);
+  const [videoUrl, setVideoUrl] = useState('');
   const [uploadingVideo, setUploadingVideo] = useState(false);
   const [generatingSubtitles, setGeneratingSubtitles] = useState(false);
+  const [assessmentPack, setAssessmentPack] = useState<AssessmentPack | null>(null);
+  const [generatingAssessmentPack, setGeneratingAssessmentPack] = useState(false);
+  const [selectedVideoId, setSelectedVideoId] = useState<string>('');
 
   const [adaptiveQuestion, setAdaptiveQuestion] = useState<AdaptiveQuestion | null>(null);
   const [adaptiveAnswer, setAdaptiveAnswer] = useState('');
@@ -105,8 +226,45 @@ export const CourseView = () => {
 
   const activeLesson = course?.lessons?.find((lesson) => lesson.id === activeLessonId) || null;
   const isTeacherOrAdmin = user?.role?.toUpperCase() === 'TEACHER' || user?.role?.toUpperCase() === 'ADMIN';
-  const selectedTrack = subtitleTracks.find((track) => track.id === selectedTrackId) || subtitleTracks[0] || null;
-  const latestVideo = mediaAssets.find((asset) => asset.kind === 'video') || null;
+  const videoAssets = useMemo(
+    () => mediaAssets.filter((asset) => asset.kind === 'video' || asset.kind === 'video_link'),
+    [mediaAssets],
+  );
+
+  const selectedVideo = useMemo(() => {
+    if (!videoAssets.length) return null;
+    return videoAssets.find((asset) => asset.id === selectedVideoId) || videoAssets[0];
+  }, [videoAssets, selectedVideoId]);
+
+  const latestVideo = selectedVideo;
+  const resourceAssets = useMemo(
+    () => mediaAssets.filter((asset) => asset.kind !== 'video' && asset.kind !== 'video_link'),
+    [mediaAssets],
+  );
+
+  useEffect(() => {
+    if (!selectedVideoId && videoAssets.length > 0) {
+      setSelectedVideoId(videoAssets[0].id);
+    }
+  }, [videoAssets, selectedVideoId]);
+
+  const getYoutubeEmbedUrl = (url: string) => {
+    const trimmed = url.trim();
+    if (!trimmed.includes('youtube.com') && !trimmed.includes('youtu.be')) return null;
+    try {
+      if (trimmed.includes('youtu.be/')) {
+        const id = trimmed.split('youtu.be/')[1]?.split(/[?&]/)[0];
+        return id ? `https://www.youtube.com/embed/${id}` : null;
+      }
+      const parsed = new URL(trimmed);
+      const id = parsed.searchParams.get('v');
+      return id ? `https://www.youtube.com/embed/${id}` : null;
+    } catch {
+      return null;
+    }
+  };
+
+  const latestYoutubeEmbed = latestVideo ? getYoutubeEmbedUrl(latestVideo.publicUrl) : null;
 
   const quizQuestions = useMemo<QuizQuestion[]>(() => {
     if (!course?.lessons?.length) return [];
@@ -367,6 +525,24 @@ export const CourseView = () => {
     }
   };
 
+  const saveExternalVideo = async () => {
+    if (!id || !videoUrl.trim()) return;
+    setUploadingVideo(true);
+    try {
+      const res = await authFetch(`/api/media/course/${id}/video-link`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ publicUrl: videoUrl.trim(), title: 'YouTube lesson video' }),
+      });
+      if (res.ok) {
+        setVideoUrl('');
+        await loadMediaAndSubtitles(id);
+      }
+    } finally {
+      setUploadingVideo(false);
+    }
+  };
+
   const generateSubtitles = async () => {
     if (!latestVideo) return;
     setGeneratingSubtitles(true);
@@ -400,6 +576,24 @@ export const CourseView = () => {
       }
     } finally {
       setIssuingCertificate(false);
+    }
+  };
+
+  const generateAssessmentPack = async () => {
+    if (!id) return;
+    setGeneratingAssessmentPack(true);
+    try {
+      const res = await authFetch('/api/ai/generate-assessment-pack', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ courseId: id }),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setAssessmentPack(data.assessmentPack || null);
+      }
+    } finally {
+      setGeneratingAssessmentPack(false);
     }
   };
 
@@ -460,8 +654,21 @@ export const CourseView = () => {
   if (isLoading) {
     return (
       <div className={styles.loaderContainer}>
-        <Loader2 className="animate-spin text-primary" size={48} />
-        <h2 className="mt-4 text-xl font-semibold">Loading course...</h2>
+        <div style={{ display: 'grid', gap: '1.2rem', width: '100%', maxWidth: 920 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+            <Loader2 className="animate-spin text-primary" size={40} />
+            <div>
+              <h2 className="text-xl font-semibold">Loading course...</h2>
+              <p style={{ color: 'var(--text-secondary)' }}>Fetching course details and AI resources.</p>
+            </div>
+          </div>
+          <div style={{ display: 'grid', gap: '1rem' }}>
+            <Skeleton width="70%" height="1.5rem" />
+            <Skeleton width="100%" height="14rem" />
+            <Skeleton width="100%" height="2rem" />
+            <Skeleton width="100%" height="2rem" />
+          </div>
+        </div>
       </div>
     );
   }
@@ -547,42 +754,89 @@ export const CourseView = () => {
             )}
           </div>
 
-          {latestVideo && (
-            <div style={{ marginBottom: '1rem' }}>
-              <h3 style={{ marginBottom: '0.55rem' }}>Lesson Video</h3>
-              <video controls src={latestVideo.publicUrl} style={{ width: '100%', borderRadius: 12, border: '1px solid var(--border-glass)' }}>
-                {selectedTrack && (
-                  <track
-                    kind="subtitles"
-                    srcLang={selectedTrack.language}
-                    label={`Subtitles (${selectedTrack.language.toUpperCase()})`}
-                    default
-                    src={`data:text/vtt;charset=utf-8,${encodeURIComponent(selectedTrack.vttContent)}`}
+          <div className={styles.videoSection}>
+            <div className={styles.videoFrame}>
+              {latestVideo ? (
+                latestYoutubeEmbed ? (
+                  <iframe
+                    src={latestYoutubeEmbed}
+                    title={latestVideo.originalName || 'YouTube lesson video'}
+                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                    allowFullScreen
+                    className={styles.videoEmbed}
                   />
-                )}
-              </video>
-              {subtitleTracks.length > 0 && (
-                <div style={{ marginTop: '0.55rem', display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
-                  <span style={{ color: 'var(--text-secondary)', fontSize: '0.9rem' }}>Subtitles:</span>
-                  <select
-                    value={selectedTrackId || subtitleTracks[0].id}
-                    onChange={(event) => setSelectedTrackId(event.target.value)}
-                    style={{
-                      background: 'var(--bg-surface)',
-                      border: '1px solid var(--border-glass)',
-                      color: 'var(--text-primary)',
-                      borderRadius: 8,
-                      padding: '0.35rem 0.5rem',
-                    }}
-                  >
-                    {subtitleTracks.map((track) => (
-                      <option key={track.id} value={track.id}>
-                        {track.language.toUpperCase()} ({new Date(track.createdAt).toLocaleDateString()})
-                      </option>
-                    ))}
-                  </select>
+                ) : (
+                  <VideoPlayer
+                    src={latestVideo.publicUrl}
+                    title={latestVideo.originalName || 'Lesson Video'}
+                    subtitleTracks={subtitleTracks}
+                    selectedTrackId={selectedTrackId}
+                    onSubtitleChange={setSelectedTrackId}
+                  />
+                )
+              ) : (
+                <div className={styles.emptyState}>
+                  <p>No lesson video is selected yet.</p>
+                  <p>Upload a video or add a YouTube link to start playback.</p>
                 </div>
               )}
+            </div>
+
+            <aside className={styles.videoSidebar}>
+              <div className={styles.sectionHeader}>
+                <div>
+                  <h3>Lesson playlist</h3>
+                  <p>{videoAssets.length} videos available</p>
+                </div>
+              </div>
+              {videoAssets.length > 0 ? (
+                <div className={styles.videoPlaylist}>
+                  {videoAssets.map((asset) => (
+                    <button
+                      key={asset.id}
+                      type="button"
+                      className={`${styles.videoItem} ${latestVideo?.id === asset.id ? styles.active : ''}`}
+                      onClick={() => setSelectedVideoId(asset.id)}
+                    >
+                      <div>
+                        <div className={styles.videoItemTitle}>{asset.originalName || 'Untitled video'}</div>
+                        <div className={styles.videoMeta}>{asset.kind === 'video_link' ? 'YouTube' : 'Uploaded'}</div>
+                      </div>
+                      <span className={styles.videoSelectBadge}>{latestVideo?.id === asset.id ? 'Playing' : 'Select'}</span>
+                    </button>
+                  ))}
+                </div>
+              ) : (
+                <div className={styles.emptyState}>
+                  Add a video to build out the course playlist.
+                </div>
+              )}
+
+              {resourceAssets.length > 0 && (
+                <div className={styles.resourceSection}>
+                  <h4>Course resources</h4>
+                  <div className={styles.resourceGrid}>
+                    {resourceAssets.map((asset) => (
+                      <div key={asset.id} className={styles.resourceItem}>
+                        <span>{asset.originalName || asset.kind}</span>
+                        <small>{asset.kind.replace('_', ' ')}</small>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </aside>
+          </div>
+
+          {user?.role?.toUpperCase() === 'STUDENT' && activeLessonId && (
+            <div style={{ marginTop: '2rem' }}>
+               <QuizTaker 
+                 lessonId={activeLessonId} 
+                 studentId={user.id} 
+                 onComplete={(score) => {
+                   setAssessmentScore(score);
+                 }} 
+               />
             </div>
           )}
 
@@ -594,10 +848,83 @@ export const CourseView = () => {
                 <Button size="sm" onClick={uploadCourseVideo} disabled={!videoFile || uploadingVideo}>
                   {uploadingVideo ? 'Uploading...' : 'Upload video'}
                 </Button>
-                <Button size="sm" variant="secondary" onClick={generateSubtitles} disabled={!latestVideo || generatingSubtitles}>
+                <input
+                  type="url"
+                  value={videoUrl}
+                  onChange={(event) => setVideoUrl(event.target.value)}
+                  placeholder="Paste YouTube link"
+                  style={{
+                    minWidth: 220,
+                    background: 'var(--bg-surface)',
+                    border: '1px solid var(--border-glass)',
+                    borderRadius: 10,
+                    color: 'var(--text-primary)',
+                    padding: '0.5rem 0.65rem',
+                  }}
+                />
+                <Button size="sm" variant="secondary" onClick={saveExternalVideo} disabled={!videoUrl.trim() || uploadingVideo}>
+                  Add YouTube
+                </Button>
+                <Button size="sm" variant="secondary" onClick={generateSubtitles} disabled={!latestVideo || latestVideo.kind !== 'video' || generatingSubtitles}>
                   {generatingSubtitles ? 'Generating...' : 'Generate subtitles (VTT)'}
                 </Button>
+                <Button size="sm" variant="secondary" onClick={generateAssessmentPack} disabled={generatingAssessmentPack}>
+                  {generatingAssessmentPack ? 'Building pack...' : 'Generate assessment pack'}
+                </Button>
               </div>
+
+              {activeLessonId && (
+                <QuizCreator lessonId={activeLessonId} />
+              )}
+              {assessmentPack && (
+                <div style={{ marginTop: '0.9rem', display: 'grid', gap: '0.8rem' }}>
+                  <div style={{ padding: '0.75rem', borderRadius: 10, border: '1px solid var(--border-glass)' }}>
+                    <strong>{assessmentPack.title}</strong>
+                    <p style={{ marginTop: '0.35rem', color: 'var(--text-secondary)' }}>{assessmentPack.summary}</p>
+                  </div>
+                  <div style={{ padding: '0.75rem', borderRadius: 10, border: '1px solid var(--border-glass)' }}>
+                    <strong>Assignment</strong>
+                    <p style={{ marginTop: '0.35rem' }}>{assessmentPack.assignment.title}</p>
+                    <p style={{ marginTop: '0.35rem', color: 'var(--text-secondary)' }}>{assessmentPack.assignment.brief}</p>
+                    <ul style={{ marginTop: '0.5rem', paddingLeft: '1.2rem', color: 'var(--text-secondary)' }}>
+                      {assessmentPack.assignment.deliverables.map((item) => (
+                        <li key={item}>{item}</li>
+                      ))}
+                    </ul>
+                  </div>
+                  <div style={{ padding: '0.75rem', borderRadius: 10, border: '1px solid var(--border-glass)' }}>
+                    <strong>Quiz Questions</strong>
+                    <div style={{ display: 'grid', gap: '0.6rem', marginTop: '0.6rem' }}>
+                      {assessmentPack.quizQuestions.slice(0, 3).map((question) => (
+                        <div key={question.id}>
+                          <div>{question.prompt}</div>
+                          <div style={{ marginTop: '0.25rem', color: 'var(--text-secondary)', fontSize: '0.9rem' }}>
+                            Answer: {question.answer}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                  <div style={{ padding: '0.75rem', borderRadius: 10, border: '1px solid var(--border-glass)' }}>
+                    <strong>Rubric</strong>
+                    <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', marginTop: '0.55rem' }}>
+                      {assessmentPack.rubric.map((item) => (
+                        <span
+                          key={item.criterion}
+                          style={{
+                            padding: '0.35rem 0.65rem',
+                            borderRadius: 999,
+                            border: '1px solid var(--border-glass)',
+                            color: 'var(--text-secondary)',
+                          }}
+                        >
+                          {item.criterion} {item.weight}%
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
           )}
 
@@ -629,36 +956,13 @@ export const CourseView = () => {
                     {transcript}
                   </pre>
                 )}
-                <div style={{ marginTop: '1rem', borderTop: '1px solid var(--border-glass)', paddingTop: '1rem' }}>
-                  <h3 style={{ marginBottom: '0.65rem' }}>AI Tutor</h3>
-                  <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
-                    <Button size="sm" variant="secondary" onClick={() => askTutor('simplify')} disabled={tutorLoading}>
-                      Explain simpler
-                    </Button>
-                    <Button size="sm" variant="secondary" onClick={() => askTutor('example')} disabled={tutorLoading}>
-                      Give example
-                    </Button>
-                    <Button size="sm" variant="secondary" onClick={() => askTutor('check_answer')} disabled={tutorLoading}>
-                      Check my answer
-                    </Button>
-                  </div>
-                  <textarea
-                    value={studentDraftAnswer}
-                    onChange={(e) => setStudentDraftAnswer(e.target.value)}
-                    placeholder="Write your answer draft for AI feedback..."
-                    style={{
-                      width: '100%',
-                      minHeight: 88,
-                      marginTop: '0.6rem',
-                      background: 'var(--bg-surface)',
-                      border: '1px solid var(--border-glass)',
-                      borderRadius: 10,
-                      color: 'var(--text-primary)',
-                      padding: '0.6rem',
-                    }}
-                  />
-                  {tutorReply && <div style={{ marginTop: '0.55rem', color: 'var(--text-secondary)' }}>{tutorReply}</div>}
-                </div>
+                <AITutorSection 
+                  draft={studentDraftAnswer}
+                  onDraftChange={setStudentDraftAnswer}
+                  onAsk={askTutor}
+                  loading={tutorLoading}
+                  reply={tutorReply}
+                />
               </div>
             ) : (
               <p>Select a lesson from the sidebar.</p>
@@ -762,55 +1066,15 @@ export const CourseView = () => {
             </div>
           )}
 
-          <div style={{ marginTop: '1.5rem', borderTop: '1px solid var(--border-glass)', paddingTop: '1rem' }}>
-            <h3 style={{ marginBottom: '0.65rem' }}>Course Chat</h3>
-            <div style={{ display: 'grid', gap: '0.5rem', maxHeight: 220, overflow: 'auto', marginBottom: '0.7rem' }}>
-              {chatMessages.map((message) => (
-                <div
-                  key={message.id}
-                  style={{
-                    padding: '0.5rem 0.65rem',
-                    borderRadius: 10,
-                    background: 'color-mix(in srgb, var(--bg-surface) 85%, transparent)',
-                    border: '1px solid var(--border-glass)',
-                  }}
-                >
-                  <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
-                    {message.user?.nickname || message.user?.name || 'User'}{message.pinned ? ' - pinned' : ''}
-                  </div>
-                  <div>{message.content}</div>
-                  {(user?.role?.toUpperCase() === 'TEACHER' || user?.role?.toUpperCase() === 'ADMIN') && (
-                    <div style={{ display: 'flex', gap: '0.4rem', marginTop: '0.4rem' }}>
-                      <Button size="sm" variant="secondary" onClick={() => togglePinMessage(message.id)}>
-                        {message.pinned ? 'Unpin' : 'Pin'}
-                      </Button>
-                      <Button size="sm" variant="secondary" onClick={() => hideMessage(message.id)}>
-                        Hide
-                      </Button>
-                    </div>
-                  )}
-                </div>
-              ))}
-            </div>
-            <div style={{ display: 'flex', gap: '0.5rem' }}>
-              <input
-                value={chatText}
-                onChange={(e) => setChatText(e.target.value)}
-                placeholder="Ask a question about this course..."
-                style={{
-                  flex: 1,
-                  background: 'var(--bg-surface)',
-                  border: '1px solid var(--border-glass)',
-                  borderRadius: 10,
-                  color: 'var(--text-primary)',
-                  padding: '0.55rem 0.65rem',
-                }}
-              />
-              <Button onClick={sendChat} size="sm">
-                Send
-              </Button>
-            </div>
-          </div>
+          <CourseChat 
+            messages={chatMessages}
+            text={chatText}
+            tokenRole={user?.role}
+            onTextChange={setChatText}
+            onSend={sendChat}
+            onPin={togglePinMessage}
+            onHide={hideMessage}
+          />
         </div>
       </div>
     </div>
